@@ -13,6 +13,8 @@ abstract class HTTPTransportType {
   String get name;
   int get value;
 
+  String toJSON();
+
   /// Specifies no transport preference.
   static const HTTPTransportType none = _HTTPTransportType('None', 0);
 
@@ -28,20 +30,18 @@ abstract class HTTPTransportType {
   static const HTTPTransportType longPolling =
       _HTTPTransportType('LongPolling', 4);
 
-  int toJSON();
-
-  factory HTTPTransportType.fromJSON(int obj) {
-    switch (obj) {
-      case 0:
+  factory HTTPTransportType.fromJSON(String name) {
+    switch (name) {
+      case 'None':
         return none;
-      case 1:
+      case 'WebSockets':
         return webSockets;
-      case 2:
+      case 'ServerSentEvents':
         return serverSentEvents;
-      case 4:
+      case 'LongPolling':
         return longPolling;
       default:
-        throw ArgumentError.value(obj);
+        throw ArgumentError.value(name);
     }
   }
 }
@@ -55,8 +55,8 @@ class _HTTPTransportType implements HTTPTransportType {
   const _HTTPTransportType(this.name, this.value);
 
   @override
-  int toJSON() {
-    return value;
+  String toJSON() {
+    return name;
   }
 
   @override
@@ -76,16 +76,16 @@ abstract class TransferFormat {
   /// Specifies that binary data will be transmitted over the connection.
   static const TransferFormat binary = _TransferFormat('Binary', 2);
 
-  int toJSON();
+  String toJSON();
 
-  factory TransferFormat.fromJSON(int obj) {
-    switch (obj) {
-      case 1:
+  factory TransferFormat.fromJSON(String name) {
+    switch (name) {
+      case 'Text':
         return text;
-      case 2:
+      case 'Binary':
         return binary;
       default:
-        throw ArgumentError.value(obj);
+        throw ArgumentError.value(name);
     }
   }
 }
@@ -99,8 +99,8 @@ class _TransferFormat implements TransferFormat {
   const _TransferFormat(this.name, this.value);
 
   @override
-  int toJSON() {
-    return value;
+  String toJSON() {
+    return name;
   }
 
   @override

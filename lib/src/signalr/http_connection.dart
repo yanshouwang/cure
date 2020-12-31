@@ -562,11 +562,11 @@ class HTTPConnection implements Connection {
   bool _transportMatches(
       dynamic requestedTransport, HTTPTransportType actualTransport) {
     final value = requestedTransport is HTTPTransportType
-        ? (requestedTransport.toJSON())
+        ? (requestedTransport.value)
         : requestedTransport;
     return value == null ||
-        value == HTTPTransportType.none.toJSON() ||
-        ((actualTransport.toJSON() & value) != 0);
+        value == HTTPTransportType.none.value ||
+        ((actualTransport.value & value) != 0);
   }
 }
 
@@ -763,9 +763,9 @@ abstract class AvailableTransport {
   }
 
   factory AvailableTransport.fromJSON(Map<String, dynamic> obj) {
-    final transport = HTTPTransportType.fromJSON(obj['transport'] as int);
+    final transport = HTTPTransportType.fromJSON(obj['transport'] as String);
     final transferFormats = (obj['transferFormats'] as List<dynamic>)
-        .map((e) => TransferFormat.fromJSON(e as int))
+        .map((e) => TransferFormat.fromJSON(e as String))
         .toList();
     return _AvailableTransport(transport, transferFormats);
   }

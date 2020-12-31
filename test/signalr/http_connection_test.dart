@@ -226,8 +226,8 @@ void main() {
                 .on((r, next) => HTTPResponse(200), 'GET')
                 .on((r, next) => HTTPResponse(202), 'DELETE'),
             logger: loggerImpl,
-            transport: HTTPTransportType.webSockets.toJSON() |
-                HTTPTransportType.serverSentEvents.toJSON());
+            transport: HTTPTransportType.webSockets.value |
+                HTTPTransportType.serverSentEvents.value);
 
         final connection = HTTPConnection('http://tempuri.org', options);
         final m = predicate((e) =>
