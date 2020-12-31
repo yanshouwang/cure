@@ -7,5 +7,7 @@ void main() async {
     print('${response.statusCode}: ${response.content}');
   } catch (e) {
     print(e);
+  } finally {
+    client.close();
   }
 }
