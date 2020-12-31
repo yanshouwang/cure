@@ -1,22 +1,19 @@
-A library for Dart developers.
+## What?
 
-Created from templates made available by Stagehand under a BSD-style
-[license](https://github.com/dart-lang/stagehand/blob/master/LICENSE).
+Cure is a library for Dart developers which contains some useful tools and extensions: JSON, CRC, HTTP, EventSource, WebSocket, Signalr, etc.
 
-## Usage
+## Why?
 
-A simple usage example:
+Dart is a beautiful language which is used by Flutter framework. But some tools such as Signalr, CRC was not supported by native, and there's some API only work in Web or DartVM, so I create this library to solve these problems.
 
-```dart
-import 'package:cure/cure.dart';
+## How?
 
-main() {
-  var awesome = new Awesome();
-}
-```
+Talk is cheap. Show me the [code](example):)
 
 ## Features and bugs
 
+Since I'm not very familiar with Dart, there maybe some bus when you use it.
+
 Please file feature requests and bugs at the [issue tracker][tracker].
 
-[tracker]: http://example.com/issues/replaceme
+[tracker]: https://github.com/yanshouwang/cure/issues

@@ -1,3 +1,8 @@
-## 1.0.0
+## 0.0.1 - 2020/12/31
 
-- Initial version, created by Stagehand
+- Add CRC Calculator
+- Add HTTP Client
+- Add JSON util
+- Add Signalr Client
+- Add EventSource
+- Add WebSocket
