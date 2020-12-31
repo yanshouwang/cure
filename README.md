@@ -12,7 +12,7 @@ Talk is cheap. Show me the [code](example):)
 
 ## Features and bugs
 
-Since I'm not very familiar with Dart, there maybe some bus when you use it.
+Since I'm not very familiar with Dart, there maybe some bugs when you use it.
 
 Please file feature requests and bugs at the [issue tracker][tracker].
 
