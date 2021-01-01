@@ -89,7 +89,7 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
 
     this.url = url;
 
-    // Flow-typing knows where it's at. Since HttpTransportType is a number and IHttpConnectionOptions is guaranteed
+    // Flow-typing knows where it's at. Since HTTPTransportType is a number and HTTPConnectionOptions is guaranteed
     // to be an object, we know (as does TypeScript) this comparison is all we need to figure out which overload was called.
     if (transportTypeOrOptions is HTTPConnectionOptions) {
       httpConnectionOptions = transportTypeOrOptions;
@@ -129,13 +129,13 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
 
   @override
   HubConnection build() {
-    // If httpConnectionOptions has a logger, use it. Otherwise, override it with the one
+    // If HTTPConnectionOptions has a logger, use it. Otherwise, override it with the one
     // provided to configureLogger
     final httpConnectionOptions =
         this.httpConnectionOptions ?? HTTPConnectionOptions();
 
     // If it's 'null', the user **explicitly** asked for null, don't mess with it.
-    // If our logger is undefined or null, that's OK, the HttpConnection constructor will handle it.
+    // If our logger is undefined or null, that's OK, the HTTPConnection constructor will handle it.
     httpConnectionOptions.logger ??= logger;
 
     // Now create the connection

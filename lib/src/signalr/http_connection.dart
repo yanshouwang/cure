@@ -105,7 +105,7 @@ class HTTPConnection implements Connection {
 
     if (_connectionState != ConnectionState.disconnected) {
       final error = Exception(
-          "Cannot start an HttpConnection that is not in the 'disconnected' state.");
+          "Cannot start an HTTPConnection that is not in the 'disconnected' state.");
       return Future.error(error);
     }
 
@@ -118,7 +118,7 @@ class HTTPConnection implements Connection {
     if (_connectionState == ConnectionState.disconnecting) {
       // stop() was called and transitioned the client into the Disconnecting state.
       final message =
-          'Failed to start the HttpConnection before stop() was called.';
+          'Failed to start the HTTPConnection before stopAsync() was called.';
       _logger.log(LogLevel.error, message);
 
       // We cannot await stopPromise inside startInternal since stopInternal awaits the startInternalPromise.
@@ -129,7 +129,7 @@ class HTTPConnection implements Connection {
     } else if (_connectionState != ConnectionState.connected) {
       // stop() was called and transitioned the client into the Disconnecting state.
       final message =
-          "HttpConnection.startInternal completed gracefully but didn't enter the connection into the connected state!";
+          "HTTPConnection._startInternalAsync completed gracefully but didn't enter the connection into the connected state!";
       _logger.log(LogLevel.error, message);
       final error = Exception(message);
       return Future.error(error);
@@ -142,13 +142,13 @@ class HTTPConnection implements Connection {
   Future<void> stopAsync([Exception error]) async {
     if (_connectionState == ConnectionState.disconnected) {
       _logger.log(LogLevel.debug,
-          'Call to HttpConnection.stop($error) ignored because the connection is already in the disconnected state.');
+          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnected state.');
       return Future.value();
     }
 
     if (_connectionState == ConnectionState.disconnecting) {
       _logger.log(LogLevel.debug,
-          'Call to HttpConnection.stop($error) ignored because the connection is already in the disconnecting state.');
+          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
       return _stopFuture;
     }
 
@@ -266,21 +266,21 @@ class HTTPConnection implements Connection {
         await transport.stopAsync();
       } catch (e) {
         _logger.log(LogLevel.error,
-            "HttpConnection.transport.stop() threw error '$e'.");
+            "HTTPConnection.transport.stopAsync() threw error '$e'.");
         _stopConnection();
       }
 
       transport = null;
     } else {
       _logger.log(LogLevel.debug,
-          'HttpConnection.transport is null in HttpConnection.stop() because start() failed.');
+          'HTTPConnection.transport is null in HTTPConnection.stopAsync() because startAsync() failed.');
       _stopConnection();
     }
   }
 
   void _stopConnection([Exception error]) {
     _logger.log(LogLevel.debug,
-        'HttpConnection.stopConnection($error) called while in state $_connectionState.');
+        'HTTPConnection.stopConnection($error) called while in state $_connectionState.');
 
     transport = null;
 
@@ -290,15 +290,15 @@ class HTTPConnection implements Connection {
 
     if (_connectionState == ConnectionState.disconnected) {
       _logger.log(LogLevel.debug,
-          'Call to HttpConnection.stopConnection($error) was ignored because the connection is already in the disconnected state.');
+          'Call to HTTPConnection.stopConnection($error) was ignored because the connection is already in the disconnected state.');
       return;
     }
 
     if (_connectionState == ConnectionState.connecting) {
       _logger.log(LogLevel.warning,
-          'Call to HttpConnection.stopConnection($error) was ignored because the connection is still in the connecting state.');
+          'Call to HTTPConnection.stopConnection($error) was ignored because the connection is still in the connecting state.');
       throw Exception(
-          'HttpConnection.stopConnection($error) was called while the connection is still in the connecting state.');
+          'HTTPConnection.stopConnection($error) was called while the connection is still in the connecting state.');
     }
 
     if (_connectionState == ConnectionState.disconnecting) {
@@ -328,8 +328,8 @@ class HTTPConnection implements Connection {
       try {
         onclose?.call(error);
       } catch (e) {
-        _logger.log(LogLevel.error,
-            'HttpConnection.onclose($error) threw error `${e}`.');
+        _logger.log(
+            LogLevel.error, 'HTTPConnection.onclose($error) threw error `$e`.');
       }
     }
   }

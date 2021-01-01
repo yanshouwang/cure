@@ -87,7 +87,7 @@ void main() {
 
           final m = predicate((e) =>
               '$e' ==
-              "Exception: Cannot start an HttpConnection that is not in the 'disconnected' state.");
+              "Exception: Cannot start an HTTPConnection that is not in the 'disconnected' state.");
           final matcher = throwsA(m);
           await expectLater(
               connection.startAsync(TransferFormat.text), matcher);

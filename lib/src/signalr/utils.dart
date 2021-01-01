@@ -183,7 +183,6 @@ class ConsoleLogger implements Logger {
           outputConsole.log(object);
           break;
       }
-      print(object);
     }
   }
 }

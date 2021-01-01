@@ -43,7 +43,7 @@ abstract class HTTPClient {
   /// Issues an HTTP request to the specified URL, returning a [Future] that resolves with an [HTTPResponse] representing the result.
   ///
   /// [request] An [HTTPRequest] describing the request to send.
-  /// Returns a [Future] that resolves with an HttpResponse describing the response, or rejects with an Error indicating a failure.
+  /// Returns a [Future] that resolves with an HTTPResponse describing the response, or rejects with an Error indicating a failure.
   Future<HTTPResponse> sendAsync(HTTPRequest request);
 
   /// Gets all cookies that apply to the specified URL.
@@ -69,7 +69,7 @@ abstract class HTTPRequest {
   /// An object describing headers to apply to the request.
   Map<String, String> headers;
 
-  /// The XMLHttpRequestResponseType to apply to the request.
+  /// The XMLHTTPRequestResponseType to apply to the request.
   String responseType;
 
   /// An AbortSignal that can be monitored for cancellation.

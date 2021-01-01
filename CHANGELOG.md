@@ -1,3 +1,10 @@
+## 0.0.3 - 2021/01/01
+
+- Migrate [Follow HTTP redirects TS client #28912](https://github.com/dotnet/aspnetcore/pull/28912)
+- Fix Log was written twice in console
+- Fix Failed to execute 'close' on 'WebSocket': The code must be either 1000, or between 3000 and 4999. 0 is neither
+- Fix Some spelling mistakes
+
 ## 0.0.2 - 2020/12/31
 
 - Add example/README.md

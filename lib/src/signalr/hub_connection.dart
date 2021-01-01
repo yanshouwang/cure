@@ -421,8 +421,8 @@ class _HubConnection implements HubConnection {
               : null;
 
           if (message.allowReconnect == true) {
-            // It feels wrong not to await connection.stop() here, but processIncomingData is called as part of an onreceive callback which is not async,
-            // this is already the behavior for serverTimeout(), and HttpConnection.Stop() should catch and log all possible exceptions.
+            // It feels wrong not to await connection.stopAsync() here, but processIncomingData is called as part of an onreceive callback which is not async,
+            // this is already the behavior for serverTimeout(), and HTTPConnection.StopAsync() should catch and log all possible exceptions.
             _connection.stopAsync(error);
           } else {
             // We cannot await stopInternal() here, but subsequent calls to stop() will await this if stopInternal() is still ongoing.
@@ -639,7 +639,7 @@ class _HubConnection implements HubConnection {
 
     if (_connectionState == HubConnectionState.disconnecting) {
       _logger.log(LogLevel.debug,
-          'Call to HttpConnection.stop($error) ignored because the connection is already in the disconnecting state.');
+          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
       return _stopFuture;
     }
 
@@ -667,9 +667,9 @@ class _HubConnection implements HubConnection {
         Exception(
             'The connection was stopped before the hub handshake could complete.');
 
-    // HttpConnection.stop() should not complete until after either HttpConnection.start() fails
+    // HTTPConnection.stopAsync() should not complete until after either HTTPConnection.startAsync() fails
     // or the onclose callback is invoked. The onclose callback will transition the HubConnection
-    // to the disconnected state if need be before HttpConnection.stop() completes.
+    // to the disconnected state if need be before HTTPConnection.stopAsync() completes.
     return _connection.stopAsync(error);
   }
 

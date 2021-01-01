@@ -75,6 +75,10 @@ class _WebSocket implements WebSocket {
 
   @override
   void close([int code, String reason]) {
-    _inner.close(code, reason);
+    if (code == null) {
+      _inner.close();
+    } else {
+      _inner.close(code, reason);
+    }
   }
 }

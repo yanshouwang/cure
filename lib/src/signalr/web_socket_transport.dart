@@ -116,6 +116,30 @@ class WebSocketTransport implements Transport {
     await completer.future;
   }
 
+  @override
+  Future<void> sendAsync(data) {
+    if (_webSocket != null && _webSocket.readyState == WebSocket.OPEN) {
+      _logger.log(LogLevel.trace,
+          '(WebSockets transport) sending data. ${getDataDetail(data, _logMessageContent)}.');
+      _webSocket.send(data);
+      return Future.value();
+    }
+
+    final error = Exception('WebSocket is not in the OPEN state');
+    return Future.error(error);
+  }
+
+  @override
+  Future<void> stopAsync() {
+    if (_webSocket != null) {
+      // Manually invoke onclose callback inline so we know the HTTPConnection was closed properly before returning
+      // This also solves an issue where websocket.onclose could take 18+ seconds to trigger during network disconnects
+      close();
+    }
+
+    return Future.value();
+  }
+
   void close([dynamic error]) {
     // webSocket will be null if the transport did not start successfully
     if (_webSocket != null) {
@@ -135,29 +159,5 @@ class WebSocketTransport implements Transport {
         onclose(null);
       }
     }
-  }
-
-  @override
-  Future<void> sendAsync(data) {
-    if (_webSocket != null && _webSocket.readyState == WebSocket.OPEN) {
-      _logger.log(LogLevel.trace,
-          '(WebSockets transport) sending data. ${getDataDetail(data, _logMessageContent)}.');
-      _webSocket.send(data);
-      return Future.value();
-    }
-
-    final error = Exception('WebSocket is not in the OPEN state');
-    return Future.error(error);
-  }
-
-  @override
-  Future<void> stopAsync() {
-    if (_webSocket != null) {
-      // Manually invoke onclose callback inline so we know the HttpConnection was closed properly before returning
-      // This also solves an issue where websocket.onclose could take 18+ seconds to trigger during network disconnects
-      close();
-    }
-
-    return Future.value();
   }
 }

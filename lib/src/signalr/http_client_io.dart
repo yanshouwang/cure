@@ -31,8 +31,7 @@ class _HTTPClient extends HTTPClient {
     Timer timer;
     try {
       final url = Uri.parse(request.url);
-      final hcr = await client.openUrl(request.method, url)
-        ..followRedirects = false;
+      final hcr = await client.openUrl(request.method, url);
       if (request.abortSignal != null) {
         request.abortSignal.onabort = () {
           final error = AbortException();

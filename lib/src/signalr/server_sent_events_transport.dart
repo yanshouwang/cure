@@ -38,6 +38,9 @@ class ServerSentEventsTransport implements Transport {
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) async {
+    Arg.isRequired(url, 'url');
+    Arg.isRequired(transferFormat, 'transferFormat');
+
     _logger.log(LogLevel.trace, '(SSE transport) Connecting.');
     // set url before accessTokenFactory because this.url is only for send and we set the auth header instead of the query string for send
     this.url = url;
