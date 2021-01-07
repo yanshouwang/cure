@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:cure/sse.dart';
 
 void main() {
-  test("# Open and close connection when listening on 'events'", () async {
+  test("# open and close connection when listening on 'events'", () async {
     final completer = Completer<void>();
 
     final server = await HttpServer.bind('localhost', 0);
@@ -34,8 +34,7 @@ void main() {
 
     await completer.future;
   });
-
-  test('# Reconnects with Last-Event-ID', () async {
+  test('# reconnects with Last-Event-ID', () async {
     final completer = Completer<void>();
 
     var server = await HttpServer.bind('localhost', 0);

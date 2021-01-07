@@ -8,7 +8,7 @@ import 'test_connection.dart';
 import 'utils.dart';
 
 void main() {
-  test('# Send invocation', () async {
+  test('# send invocation', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -29,7 +29,7 @@ void main() {
       }
     });
   });
-  test('# Invoke invocation', () async {
+  test('# invoke invocation', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -51,7 +51,7 @@ void main() {
       }
     });
   });
-  test('# Stream invocation', () async {
+  test('# stream invocation', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -70,7 +70,7 @@ void main() {
       }
     });
   });
-  test('# Upload invocation', () async {
+  test('# upload invocation', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -95,7 +95,7 @@ void main() {
       }
     });
   });
-  test('# Upload stream invocation', () async {
+  test('# upload stream invocation', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -114,7 +114,7 @@ void main() {
       }
     });
   });
-  test('# Completion message', () async {
+  test('# completion message', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -137,7 +137,7 @@ void main() {
       }
     });
   });
-  test('# Cancel message', () async {
+  test('# cancel message', () async {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
 
@@ -166,7 +166,7 @@ void main() {
 HubConnection createHubConnection(Connection connection,
     [Logger logger, HubProtocol protocol]) {
   return HubConnection.create(
-      connection, logger ?? NullLogger(), protocol ?? JSONHubProtocol());
+      connection, logger ?? NullLogger(), protocol ?? JsonHubProtocol());
 }
 
 class FakeSubscriber extends Fake implements StreamSubscriber {

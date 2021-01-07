@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:cure/cryptography.dart';
+import 'package:cure/crypto.dart';
 
 void main() {
   final crc = CRC.crc16MODBUS();

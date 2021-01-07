@@ -8,8 +8,8 @@ import 'transport.dart';
 import 'utils.dart';
 
 class ServerSentEventsTransport implements Transport {
-  final HTTPClient _httpClient;
-  final dynamic Function() _accessTokenFactory;
+  final HttpClient _httpClient;
+  final Object Function() _accessTokenFactory;
   final Logger _logger;
   final bool _logMessageContent;
   final EventSource Function(String url,
@@ -23,7 +23,7 @@ class ServerSentEventsTransport implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   ServerSentEventsTransport(
       this._httpClient,

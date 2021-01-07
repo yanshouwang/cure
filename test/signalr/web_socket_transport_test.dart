@@ -3,13 +3,14 @@ import 'dart:typed_data';
 
 import 'package:cure/signalr.dart';
 import 'package:test/test.dart';
+import 'package:tuple/tuple.dart';
 
 import 'common.dart';
 import 'test_http_client.dart';
 import 'test_web_socket.dart';
 
 void main() {
-  test('# Set websocket binarytype to arraybuffer on Binary transferformat',
+  test('# set websocket binarytype to arraybuffer on Binary transferformat',
       () async {
     await VerifyLogger.runAsync((logger) async {
       await createAndStartWebSocketAsync(
@@ -17,7 +18,7 @@ void main() {
       expect(TestWebSocket.ws.binaryType, 'arraybuffer');
     });
   });
-  test('# Connect waits for WebSocket to be connected', () async {
+  test('# connect waits for WebSocket to be connected', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = createWebSocket(logger, null);
 
@@ -34,7 +35,7 @@ void main() {
       expect(connectComplete, true);
     });
   });
-  test('# Connect fails if there is error during connect', () async {
+  test('# connect fails if there is error during connect', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = createWebSocket(logger, null);
 
@@ -56,7 +57,7 @@ void main() {
       expect(connectComplete, false);
     });
   });
-  test('# Connect failure does not call onclose handler', () async {
+  test('# connect failure does not call onclose handler', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = createWebSocket(logger, null);
 
@@ -83,7 +84,7 @@ void main() {
       expect(closeCalled, false);
     });
   });
-  group('# Generates correct WebSocket URL with access_token', () {
+  group('# generates correct WebSocket URL with access_token', () {
     final items = [
       MapEntry(
           'http://example.com', 'ws://example.com?access_token=secretToken'),
@@ -102,7 +103,7 @@ void main() {
       });
     }
   });
-  group('# Generates correct WebSocket URL', () {
+  group('# generates correct WebSocket URL', () {
     final items = [
       MapEntry('http://example.com', 'ws://example.com'),
       MapEntry('http://example.com?value=null', 'ws://example.com?value=null'),
@@ -117,11 +118,11 @@ void main() {
       });
     }
   });
-  test('# Can receive data', () async {
+  test('# can receive data', () async {
     await VerifyLogger.runAsync((logger) async {
       final webSocket = await createAndStartWebSocketAsync(logger);
 
-      dynamic received;
+      Object received;
       webSocket.onreceive = (data) => received = data;
 
       TestWebSocket.ws.ondata('receive data');
@@ -130,7 +131,7 @@ void main() {
       expect(received, 'receive data');
     });
   });
-  test('# Is closed from WebSocket onclose with error', () async {
+  test('# is closed from WebSocket onclose with error', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = await createAndStartWebSocketAsync(logger);
 
@@ -157,7 +158,7 @@ void main() {
       await expectLater(transport.sendAsync(''), matcher);
     });
   });
-  test('# Is closed from WebSocket onclose', () async {
+  test('# is closed from WebSocket onclose', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = await createAndStartWebSocketAsync(logger);
 
@@ -181,7 +182,7 @@ void main() {
       await expectLater(transport.sendAsync(''), matcher);
     });
   });
-  test('# Is closed from Transport stop', () async {
+  test('# is closed from Transport stop', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = await createAndStartWebSocketAsync(logger);
 
@@ -203,27 +204,27 @@ void main() {
       await expectLater(transport.sendAsync(''), matcher);
     });
   });
-  group('# Can send data', () {
-    final items = [
-      MapEntry(TransferFormat.text, 'send data'),
-      MapEntry(TransferFormat.binary, Uint8List.fromList([0, 1, 3]))
+  group('# can send data', () {
+    final elements = [
+      Tuple2(TransferFormat.text, 'send data'),
+      Tuple2(TransferFormat.binary, Uint8List.fromList([0, 1, 3]))
     ];
-    for (var item in items) {
-      test('# ${item.key}', () async {
+    for (var element in elements) {
+      test('# send ${element.item1}', () async {
         await VerifyLogger.runAsync((logger) async {
           final webSocket = await createAndStartWebSocketAsync(
-              logger, 'http://example.com', null, item.key);
+              logger, 'http://example.com', null, element.item1);
 
           //MockWebSocket.ws.readyState = WebSocket.OPEN;
-          await webSocket.sendAsync(item.value);
+          await webSocket.sendAsync(element.item2);
 
           expect(TestWebSocket.ws.receivedData.length, 1);
-          expect(TestWebSocket.ws.receivedData[0], item.value);
+          expect(TestWebSocket.ws.receivedData[0], element.item2);
         });
       });
     }
   });
-  test('# Sets user agent header on connect', () async {
+  test('# sets user agent header on connect', () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = await createAndStartWebSocketAsync(logger);
 
@@ -248,7 +249,7 @@ void main() {
       await expectLater(transport.sendAsync(''), matcher);
     });
   });
-  test('# Overwrites library headers with user headers', () async {
+  test('# overwrites library headers with user headers', () async {
     await VerifyLogger.runAsync((logger) async {
       final headers = {'User-Agent': 'Custom Agent', 'X-HEADER': 'VALUE'};
       final transport =
@@ -275,7 +276,7 @@ void main() {
       await expectLater(transport.sendAsync(''), matcher);
     });
   });
-  test("# Is closed from 'onreceive' callback throwing", () async {
+  test("# is closed from 'onreceive' callback throwing", () async {
     await VerifyLogger.runAsync((logger) async {
       final transport = await createAndStartWebSocketAsync(logger);
 
@@ -304,7 +305,7 @@ void main() {
     });
   });
   test(
-      'Does not run onclose callback if Transport does not fully connect and exits',
+      'does not run onclose callback if Transport does not fully connect and exits',
       () async {
     await VerifyLogger.runAsync((logger) async {
       final webSocket = createWebSocket(logger);
@@ -342,7 +343,7 @@ WebSocketTransport createWebSocket(Logger logger,
     Map<String, String> headers]) {
   TestWebSocket.wsSet = Completer<void>();
   final transprot = WebSocketTransport(
-      TestHTTPClient(),
+      TestHttpClient(),
       accessTokenFactory,
       logger,
       true,

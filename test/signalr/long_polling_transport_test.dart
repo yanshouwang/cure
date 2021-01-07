@@ -8,14 +8,14 @@ import 'test_http_client.dart';
 import 'utils.dart';
 
 void main() {
-  test('# Shuts down polling by aborting in-progress request', () async {
+  test('# shuts down polling by aborting in-progress request', () async {
     await VerifyLogger.runAsync((logger) async {
       var firstPoll = true;
       final pollCompleted = Completer<void>();
-      final client = TestHTTPClient().on((r, next) async {
+      final client = TestHttpClient().on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
-          return HTTPResponse(200);
+          return HttpResponse(200);
         } else {
           // Turn 'onabort' into a promise.
           final abort = Completer<void>();
@@ -29,9 +29,9 @@ void main() {
           // Signal that the poll has completed.
           pollCompleted.complete();
 
-          return HTTPResponse(200);
+          return HttpResponse(200);
         }
-      }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE');
+      }, 'GET').on((r, next) => HttpResponse(202), 'DELETE');
       final transport =
           LongPollingTransport(client, null, logger, false, true, {});
 
@@ -45,13 +45,13 @@ void main() {
   test('# 204 server response stops polling and raises onClose', () async {
     await VerifyLogger.runAsync((logger) async {
       var firstPoll = true;
-      final client = TestHTTPClient().on((r, next) async {
+      final client = TestHttpClient().on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
-          return HTTPResponse(200);
+          return HttpResponse(200);
         } else {
           // A 204 response will stop the long polling transport
-          return HTTPResponse(204);
+          return HttpResponse(204);
         }
       }, 'GET');
       final transport =
@@ -65,24 +65,24 @@ void main() {
       await stopFuture;
     });
   });
-  test('# Sends DELETE on stop after polling has finished', () async {
+  test('# sends DELETE on stop after polling has finished', () async {
     await VerifyLogger.runAsync((logger) async {
       var firstPoll = true;
       var deleteSent = false;
       final pollingCompleter = Completer<void>();
       final deleteSyncPoint = SyncPoint();
-      final httpClient = TestHTTPClient().on((r, next) async {
+      final httpClient = TestHttpClient().on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
-          return HTTPResponse(200);
+          return HttpResponse(200);
         } else {
           await pollingCompleter.future;
-          return HTTPResponse(204);
+          return HttpResponse(204);
         }
       }, 'GET').on((r, next) async {
         deleteSent = true;
         await deleteSyncPoint.waitToContinueAsync();
-        return HTTPResponse(202);
+        return HttpResponse(202);
       }, 'DELETE');
 
       final transport =
@@ -110,26 +110,26 @@ void main() {
       await stopFuture;
     });
   });
-  test('# User agent header set on sends and polls', () async {
+  test('# user agent header set on sends and polls', () async {
     await VerifyLogger.runAsync((logger) async {
       var firstPoll = true;
       var firstPollUserAgent = '';
       var secondPollUserAgent = '';
       var deleteUserAgent = '';
       final pollingCompleter = Completer<void>();
-      final httpClient = TestHTTPClient().on((r, next) async {
+      final httpClient = TestHttpClient().on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
           firstPollUserAgent = r.headers['User-Agent'];
-          return HTTPResponse(200);
+          return HttpResponse(200);
         } else {
           secondPollUserAgent = r.headers['User-Agent'];
           await pollingCompleter.future;
-          return HTTPResponse(204);
+          return HttpResponse(204);
         }
       }, 'GET').on((r, next) async {
         deleteUserAgent = r.headers['User-Agent'];
-        return HTTPResponse(202);
+        return HttpResponse(202);
       }, 'DELETE');
 
       final transport =
@@ -152,7 +152,7 @@ void main() {
       expect(secondPollUserAgent, userAgent.value);
     });
   });
-  test('# Overwrites library headers with user headers', () async {
+  test('# overwrites library headers with user headers', () async {
     await VerifyLogger.runAsync((logger) async {
       final headers = {'User-Agent': 'Custom Agent', 'X-HEADER': 'VALUE'};
       var firstPoll = true;
@@ -163,7 +163,7 @@ void main() {
       var deleteUserAgent = '';
       var deleteUserHeader = '';
       final pollingCompleter = Completer<void>();
-      final httpClient = TestHTTPClient().on((r, next) async {
+      final httpClient = TestHttpClient().on((r, next) async {
         expect(r.content, '{"message": "hello"}');
         expect(r.headers, headers);
         expect(r.method, 'POST');
@@ -173,17 +173,17 @@ void main() {
           firstPoll = false;
           firstPollUserAgent = r.headers['User-Agent'];
           firstUserHeader = r.headers['X-HEADER'];
-          return HTTPResponse(200);
+          return HttpResponse(200);
         } else {
           secondPollUserAgent = r.headers['User-Agent'];
           secondUserHeader = r.headers['X-HEADER'];
           await pollingCompleter.future;
-          return HTTPResponse(204);
+          return HttpResponse(204);
         }
       }, 'GET').on((r, next) async {
         deleteUserAgent = r.headers['User-Agent'];
         deleteUserHeader = r.headers['X-HEADER'];
-        return HTTPResponse(202);
+        return HttpResponse(202);
       }, 'DELETE');
 
       final transport =

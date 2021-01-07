@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
 import 'package:mockito/mockito.dart';
 import 'package:pedantic/pedantic.dart';
@@ -12,15 +12,15 @@ import 'test_connection.dart';
 import 'utils.dart';
 
 void main() {
-  group('# Start', () {
-    test('# Sends handshake message', () async {
+  group('# startAsync', () {
+    test('# sends handshake message', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
         try {
           await hubConnection.startAsync();
           expect(connection.sentData.length, 1);
-          final obj = JSON.fromJSON(connection.sentData[0]);
+          final obj = json.decode(connection.sentData[0] as String);
           final message = HandshakeRequestMessage.fromJSON(obj);
           expect(message.protocol, 'json');
           expect(message.version, 1);
@@ -29,7 +29,7 @@ void main() {
         }
       });
     });
-    test('# Can change url', () async {
+    test('# can change url', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -43,7 +43,7 @@ void main() {
         }
       });
     });
-    test('# Can change url in onclose', () async {
+    test('# can change url in onclose', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -61,7 +61,7 @@ void main() {
         }
       });
     });
-    test('# Changing url while active throws', () async {
+    test('# changing url while active throws', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -78,7 +78,7 @@ void main() {
         }
       });
     });
-    test('# State connected', () async {
+    test('# state connected', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -92,8 +92,8 @@ void main() {
       });
     });
   });
-  group('# Ping', () {
-    test('# Automatically sends multiple pings', () async {
+  group('# ping', () {
+    test('# automatically sends multiple pings', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -105,8 +105,9 @@ void main() {
           await delayUntilAsync(500);
 
           final numPings = connection.sentData
-              .where(
-                  (s) => JSON.fromJSON(s)['type'] == MessageType.ping.toJSON())
+              .where((item) =>
+                  json.decode(item as String)['type'] ==
+                  MessageType.ping.toJSON())
               .length;
           final matcher = greaterThanOrEqualTo(2);
           expect(numPings, matcher);
@@ -115,7 +116,7 @@ void main() {
         }
       });
     });
-    test('# Does not send pings for connection with inherentKeepAlive',
+    test('# does not send pings for connection with inherentKeepAlive',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection(true, true);
@@ -128,8 +129,9 @@ void main() {
           await delayUntilAsync(500);
 
           final numPings = connection.sentData
-              .where(
-                  (s) => JSON.fromJSON(s)['type'] == MessageType.ping.toJSON())
+              .where((item) =>
+                  json.decode(item as String)['type'] ==
+                  MessageType.ping.toJSON())
               .length;
           expect(numPings, 0);
         } finally {
@@ -138,8 +140,8 @@ void main() {
       });
     });
   });
-  group('# Stop', () {
-    test('# State disconnected', () async {
+  group('# stopAsync', () {
+    test('# state disconnected', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -154,8 +156,8 @@ void main() {
       });
     });
   });
-  group('# Send', () {
-    test('# Sends a non blocking invocation', () async {
+  group('# sendAsync', () {
+    test('# sends a non blocking invocation', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -170,7 +172,7 @@ void main() {
 
           // Verify the message is sent
           expect(connection.sentData.length, 1);
-          final obj = JSON.fromJSON(connection.sentData[0]);
+          final obj = json.decode(connection.sentData[0] as String);
           final message = InvocationMessage.fromJSON(obj);
           expect(message.target, 'testMethod');
           expect(
@@ -191,7 +193,7 @@ void main() {
         }
       });
     });
-    test('# Works if argument is null', () async {
+    test('# works if argument is null', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -210,7 +212,7 @@ void main() {
 
           // Verify the message is sent
           expect(connection.sentData.length, 1);
-          final obj = JSON.fromJSON(connection.sentData[0]);
+          final obj = json.decode(connection.sentData[0] as String);
           final message = InvocationMessage.fromJSON(obj);
           expect(message.target, 'testMethod');
           expect(
@@ -232,8 +234,8 @@ void main() {
       });
     });
   });
-  group('# Invoke', () {
-    test('# Sends an invocation', () async {
+  group('# invokeAsync', () {
+    test('# sends an invocation', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -247,7 +249,7 @@ void main() {
 
           // Verify the message is sent
           expect(connection.sentData.length, 1);
-          final obj = JSON.fromJSON(connection.sentData[0]);
+          final obj = json.decode(connection.sentData[0] as String);
           final message = InvocationMessage.fromJSON(obj);
           expect(message.target, 'testMethod');
           expect(
@@ -268,7 +270,7 @@ void main() {
         }
       });
     });
-    test('# Can process handshake from text', () async {
+    test('# can process handshake from text', () async {
       await VerifyLogger.runAsync((logger) async {
         var protocolCalled = false;
 
@@ -296,7 +298,7 @@ void main() {
         }
       });
     });
-    test('# Can process handshake from binary', () async {
+    test('# can process handshake from binary', () async {
       await VerifyLogger.runAsync((logger) async {
         var protocolCalled = false;
 
@@ -315,7 +317,7 @@ void main() {
           // handshake response + message separator
           final data = [0x7b, 0x7d, 0x1e];
 
-          connection.receiveBinary(Uint8List.fromList(data).buffer);
+          connection.receiveBinary(Uint8List.fromList(data));
           await startFuture;
 
           // message only contained handshake response
@@ -325,13 +327,13 @@ void main() {
         }
       });
     });
-    test('# Can process handshake and additional messages from binary',
+    test('# can process handshake and additional messages from binary',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        ByteBuffer receivedProcotolData;
+        Uint8List receivedProcotolData;
 
         final mockProtocol = TestProtocol(TransferFormat.binary);
-        mockProtocol.onreceive = (d) => receivedProcotolData = d as ByteBuffer;
+        mockProtocol.onreceive = (d) => receivedProcotolData = d as Uint8List;
 
         final connection = TestConnection(false);
         final hubConnection =
@@ -451,7 +453,7 @@ void main() {
             0x2e,
           ];
 
-          connection.receiveBinary(Uint8List.fromList(data).buffer);
+          connection.receiveBinary(Uint8List.fromList(data));
           await startFuture;
 
           // left over data is the message pack message
@@ -461,7 +463,7 @@ void main() {
         }
       });
     });
-    test('# Can process handshake and additional messages from text', () async {
+    test('# can process handshake and additional messages from text', () async {
       await VerifyLogger.runAsync((logger) async {
         String receivedProcotolData;
 
@@ -493,7 +495,7 @@ void main() {
       });
     });
     test(
-        '# Start completes if connection closes and handshake not received yet',
+        '# start completes if connection closes and handshake not received yet',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final mockProtocol = TestProtocol(TransferFormat.text);
@@ -516,7 +518,7 @@ void main() {
         }
       });
     });
-    test('# Rejects the promise when an error is received', () async {
+    test('# rejects the promise when an error is received', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -540,7 +542,7 @@ void main() {
         }
       });
     });
-    test('# Resolves the promise when a result is received', () async {
+    test('# resolves the promise when a result is received', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -562,7 +564,7 @@ void main() {
         }
       });
     });
-    test('# Is able to send stream items to server with invoke', () async {
+    test('# is able to send stream items to server with invoke', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -573,7 +575,7 @@ void main() {
           final invokeFuture =
               hubConnection.invokeAsync('testMethod', ['arg', subject]);
 
-          final obj1 = JSON.fromJSON(connection.sentData[1]);
+          final obj1 = json.decode(connection.sentData[1] as String);
           final message1 = InvocationMessage.fromJSON(obj1);
           expect(message1.target, 'testMethod');
           expect(
@@ -591,7 +593,7 @@ void main() {
           final duration = Duration(milliseconds: 50);
           await Future.delayed(duration);
 
-          final obj2 = JSON.fromJSON(connection.sentData[2]);
+          final obj2 = json.decode(connection.sentData[2] as String);
           final message2 = StreamItemMessage.fromJSON(obj2);
           expect(message2.invocationId, '0');
           expect(message2.item, 'item numero uno');
@@ -609,7 +611,7 @@ void main() {
         }
       });
     });
-    test('# Is able to send stream items to server with send', () async {
+    test('# is able to send stream items to server with send', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -619,7 +621,7 @@ void main() {
           final subject = Subject();
           await hubConnection.sendAsync('testMethod', ['arg', subject]);
 
-          final obj1 = JSON.fromJSON(connection.sentData[1]);
+          final obj1 = json.decode(connection.sentData[1] as String);
           final message1 = InvocationMessage.fromJSON(obj1);
           expect(message1.target, 'testMethod');
           expect(
@@ -639,7 +641,7 @@ void main() {
           final duration = Duration(milliseconds: 50);
           await Future.delayed(duration);
 
-          final obj2 = JSON.fromJSON(connection.sentData[2]);
+          final obj2 = json.decode(connection.sentData[2] as String);
           final message2 = StreamItemMessage.fromJSON(obj2);
           expect(message2.invocationId, '0');
           expect(message2.item, 'item numero uno');
@@ -649,7 +651,7 @@ void main() {
         }
       });
     });
-    test('# Is able to send stream items to server with stream', () async {
+    test('# is able to send stream items to server with stream', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -672,7 +674,7 @@ void main() {
           hubConnection
               .stream('testMethod', ['arg', subject]).subscribe(subscriber);
 
-          final obj1 = JSON.fromJSON(connection.sentData[1]);
+          final obj1 = json.decode(connection.sentData[1] as String);
           final message1 = StreamInvocationMessage.fromJSON(obj1);
           expect(message1.invocationId, '1');
           expect(message1.target, 'testMethod');
@@ -689,7 +691,7 @@ void main() {
           subject.next('item numero uno');
           final duration = Duration(milliseconds: 50);
           await Future.delayed(duration);
-          final obj2 = JSON.fromJSON(connection.sentData[2]);
+          final obj2 = json.decode(connection.sentData[2] as String);
           final message2 = StreamItemMessage.fromJSON(obj2);
           expect(message2.invocationId, '0');
           expect(message2.item, 'item numero uno');
@@ -708,7 +710,7 @@ void main() {
         }
       });
     });
-    test('# Completes pending invocations when stopped', () async {
+    test('# completes pending invocations when stopped', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -728,7 +730,7 @@ void main() {
         await expectLater(invokeFuture, matcher);
       });
     });
-    test('# Completes pending invocations when connection is lost', () async {
+    test('# completes pending invocations when connection is lost', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -749,8 +751,8 @@ void main() {
       });
     });
   });
-  group('# On', () {
-    test('# Invocations ignored in callbacks not registered', () async {
+  group('# on', () {
+    test('# invocations ignored in callbacks not registered', () async {
       await VerifyLogger.runAsync((logger) async {
         final warnings = <String>[];
         final wrappingLogger = MockLogger();
@@ -782,7 +784,7 @@ void main() {
       });
     });
     test(
-        '# Invocations ignored in callbacks that have registered then unregistered',
+        '# invocations ignored in callbacks that have registered then unregistered',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final warnings = <String>[];
@@ -819,7 +821,7 @@ void main() {
         }
       });
     });
-    test('# All handlers can be unregistered with just the method name',
+    test('# all handlers can be unregistered with just the method name',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
@@ -856,7 +858,7 @@ void main() {
       });
     });
     test(
-        '# A single handler can be unregistered with the method name and handler',
+        '# a single handler can be unregistered with the method name and handler',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
@@ -892,7 +894,7 @@ void main() {
         }
       });
     });
-    test("# Can't register the same handler multiple times", () async {
+    test("# can't register the same handler multiple times", () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -917,7 +919,7 @@ void main() {
         }
       });
     });
-    test('# Callback invoked when servers invokes a method on the client',
+    test('# callback invoked when servers invokes a method on the client',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
@@ -941,7 +943,7 @@ void main() {
         }
       });
     });
-    test('# Stop on handshake error', () async {
+    test('# stop on handshake error', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection(false);
         final hubConnection = createHubConnection(connection, logger);
@@ -967,7 +969,7 @@ void main() {
         }
       }, ['Server returned handshake error: Error!']);
     });
-    test('# Stop on close message', () async {
+    test('# stop on close message', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -992,7 +994,7 @@ void main() {
         }
       });
     });
-    test('# Stop on error close message', () async {
+    test('# stop on error close message', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1021,7 +1023,7 @@ void main() {
         }
       });
     });
-    test('# Can have multiple callbacks', () async {
+    test('# can have multiple callbacks', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1047,7 +1049,7 @@ void main() {
         }
       });
     });
-    test('# Can unsubscribe from on', () async {
+    test('# can unsubscribe from on', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1080,7 +1082,7 @@ void main() {
         }
       });
     });
-    test('# Unsubscribing from non-existing callbacks no-ops', () async {
+    test('# unsubscribing from non-existing callbacks no-ops', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1092,7 +1094,7 @@ void main() {
         }
       });
     });
-    test('# Using null/undefined for methodName or method no-ops', () async {
+    test('# using null/undefined for methodName or method no-ops', () async {
       await VerifyLogger.runAsync((logger) async {
         final warnings = <String>[];
         final wrappingLogger = MockLogger();
@@ -1135,8 +1137,8 @@ void main() {
       });
     });
   });
-  group('# Stream', () {
-    test('# Sends an invocation', () async {
+  group('# stream', () {
+    test('# sends an invocation', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -1148,7 +1150,7 @@ void main() {
 
           // Verify the message is sent (+ handshake)
           expect(connection.sentData.length, 2);
-          final obj = JSON.fromJSON(connection.sentData[1]);
+          final obj = json.decode(connection.sentData[1] as String);
           final message = StreamInvocationMessage.fromJSON(obj);
           expect(message.invocationId, connection.lastInvocationId);
           expect(message.target, 'testStream');
@@ -1168,7 +1170,7 @@ void main() {
         }
       });
     });
-    test('# Completes with an error when an error is yielded', () async {
+    test('# completes with an error when an error is yielded', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1193,7 +1195,7 @@ void main() {
         }
       });
     });
-    test('# Completes the observer when a completion is received', () async {
+    test('# completes the observer when a completion is received', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1215,7 +1217,7 @@ void main() {
         }
       });
     });
-    test('# Completes pending streams when stopped', () async {
+    test('# completes pending streams when stopped', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -1237,7 +1239,7 @@ void main() {
         }
       });
     });
-    test('# Completes pending streams when connection is lost', () async {
+    test('# completes pending streams when connection is lost', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -1259,7 +1261,7 @@ void main() {
         }
       });
     });
-    test('# Yields items as they arrive', () async {
+    test('# yields items as they arrive', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1300,7 +1302,7 @@ void main() {
         }
       });
     });
-    test('# Does not require error function registered', () async {
+    test('# does not require error function registered', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -1318,7 +1320,7 @@ void main() {
         }
       });
     });
-    test('# Does not require complete function registered', () async {
+    test('# does not require complete function registered', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
 
@@ -1339,7 +1341,7 @@ void main() {
         }
       });
     });
-    test('# Can be canceled', () async {
+    test('# can be canceled', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1371,7 +1373,7 @@ void main() {
           await delayUntilAsync(1000, () => connection.sentData.length == 3);
           // Verify the cancel is sent (+ handshake)
           expect(connection.sentData.length, 3);
-          final obj = JSON.fromJSON(connection.sentData[2]);
+          final obj = json.decode(connection.sentData[2] as String);
           final message = CancelInvocationMessage.fromJSON(obj);
           expect(message.invocationId, connection.lastInvocationId);
           expect(message.headers, isNull);
@@ -1382,7 +1384,7 @@ void main() {
     });
   });
   group('# onclose', () {
-    test('# Can have multiple callbacks', () async {
+    test('# can have multiple callbacks', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1400,7 +1402,7 @@ void main() {
         }
       });
     });
-    test('# Callbacks receive error', () async {
+    test('# callbacks receive error', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1418,7 +1420,7 @@ void main() {
         }
       });
     });
-    test('# Ignores null callbacks', () async {
+    test('# ignores null callbacks', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1434,7 +1436,7 @@ void main() {
         }
       });
     });
-    test('# State disconnected', () async {
+    test('# state disconnected', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1453,8 +1455,8 @@ void main() {
       });
     });
   });
-  group('# KeepAlive', () {
-    test('# Can receive ping messages', () async {
+  group('# keepAlive', () {
+    test('# can receive ping messages', () async {
       await VerifyLogger.runAsync((logger) async {
         // Receive the ping mid-invocation so we can see that the rest of the flow works fine
 
@@ -1478,7 +1480,7 @@ void main() {
         }
       });
     });
-    test('# Does not terminate if messages are received', () async {
+    test('# does not terminate if messages are received', () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
         final hubConnection = createHubConnection(connection, logger);
@@ -1510,7 +1512,7 @@ void main() {
         }
       });
     });
-    test('# Terminates if no messages received within timeout interval',
+    test('# terminates if no messages received within timeout interval',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final connection = TestConnection();
@@ -1538,7 +1540,7 @@ void main() {
 HubConnection createHubConnection(Connection connection,
     [Logger logger, HubProtocol protocol]) {
   return HubConnection.create(
-      connection, logger ?? NullLogger(), protocol ?? JSONHubProtocol());
+      connection, logger ?? NullLogger(), protocol ?? JsonHubProtocol());
 }
 
 class TestProtocol implements HubProtocol {

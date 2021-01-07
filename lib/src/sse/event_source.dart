@@ -1,6 +1,6 @@
 import 'event_source_stub.dart'
-    if (dart.library.html) 'event_source_html.dart'
-    if (dart.library.io) 'event_source_io.dart';
+    if (dart.library.html) 'event_source_chromium.dart'
+    if (dart.library.io) 'event_source_dartium.dart';
 
 /// EventSource
 abstract class EventSource {

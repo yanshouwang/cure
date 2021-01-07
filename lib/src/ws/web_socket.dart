@@ -1,6 +1,6 @@
 import 'web_socket_stub.dart'
-    if (dart.library.html) 'web_socket_html.dart'
-    if (dart.library.io) 'web_socket_io.dart';
+    if (dart.library.html) 'web_socket_chromium.dart'
+    if (dart.library.io) 'web_socket_dartium.dart';
 
 /// WebSocket
 abstract class WebSocket {
@@ -41,13 +41,13 @@ abstract class WebSocket {
   void Function(Exception error) onerror;
 
   /// ondata
-  void Function(dynamic data) ondata;
+  void Function(Object data) ondata;
 
   /// onclose
   void Function(int code, String reason) onclose;
 
   /// Send [data] to the remote.
-  void send(dynamic data);
+  void send(Object data);
 
   /// Close the WebSocket with [code] and [reason].
   void close([int code, String reason]);

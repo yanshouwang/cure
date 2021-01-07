@@ -8,10 +8,10 @@ import 'test_event_source.dart';
 import 'test_http_client.dart';
 
 void main() {
-  test('# Does not allow non-text formats', () async {
+  test('# does not allow non-text formats', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = ServerSentEventsTransport(
-          TestHTTPClient(),
+          TestHttpClient(),
           null,
           logger,
           true,
@@ -27,10 +27,10 @@ void main() {
       await expectLater(sse.connectAsync('', TransferFormat.binary), matcher);
     });
   });
-  test('# Connect waits for EventSource to be connected', () async {
+  test('# connect waits for EventSource to be connected', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = ServerSentEventsTransport(
-          TestHTTPClient(),
+          TestHttpClient(),
           null,
           logger,
           true,
@@ -58,10 +58,10 @@ void main() {
       expect(connectComplete, true);
     });
   });
-  test('# Connect failure does not call onclose handler', () async {
+  test('# connect failure does not call onclose handler', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = ServerSentEventsTransport(
-          TestHTTPClient(),
+          TestHttpClient(),
           null,
           logger,
           true,
@@ -100,7 +100,7 @@ void main() {
   ].forEach((element) {
     final input = element[0];
     final expected = element[1];
-    test('# Appends access_token to url $input', () async {
+    test('# appends access_token to url $input', () async {
       await VerifyLogger.runAsync((logger) async {
         await createAndStartSSEAsync(logger, input, () => 'secretToken');
 
@@ -109,10 +109,10 @@ void main() {
     });
   });
 
-  test('# Sets Authorization header on sends', () async {
+  test('# sets Authorization header on sends', () async {
     await VerifyLogger.runAsync((logger) async {
-      HTTPRequest request;
-      final httpClient = TestHTTPClient().on((r, next) {
+      HttpRequest request;
+      final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
       });
@@ -126,10 +126,10 @@ void main() {
       expect(request.url, 'http://example.com');
     });
   });
-  test('# Can send data', () async {
+  test('# can send data', () async {
     await VerifyLogger.runAsync((logger) async {
-      HTTPRequest request;
-      final httpClient = TestHTTPClient().on((r, next) {
+      HttpRequest request;
+      final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
       });
@@ -142,11 +142,11 @@ void main() {
       expect(request.content, 'send data');
     });
   });
-  test('# Can receive data', () async {
+  test('# can receive data', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = await createAndStartSSEAsync(logger);
 
-      dynamic received;
+      Object received;
       sse.onreceive = (data) => received = data;
 
       TestEventSource.eventSource.ondata('message', 'receive data');
@@ -154,7 +154,7 @@ void main() {
       expect(received, 'receive data');
     });
   });
-  test('# Stop closes EventSource and calls onclose', () async {
+  test('# stop closes EventSource and calls onclose', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = await createAndStartSSEAsync(logger);
 
@@ -167,7 +167,7 @@ void main() {
       expect(TestEventSource.eventSource.closed, true);
     });
   });
-  test('# Can close from EventSource error', () async {
+  test('# can close from EventSource error', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = await createAndStartSSEAsync(logger);
 
@@ -186,10 +186,10 @@ void main() {
       expect(fail, error);
     });
   });
-  test('# Send throws if not connected', () async {
+  test('# send throws if not connected', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = ServerSentEventsTransport(
-          TestHTTPClient(),
+          TestHttpClient(),
           null,
           logger,
           true,
@@ -204,7 +204,7 @@ void main() {
       await expectLater(sse.sendAsync(''), matcher);
     });
   });
-  test('# Closes on error from receive', () async {
+  test('# closes on error from receive', () async {
     await VerifyLogger.runAsync((logger) async {
       final sse = await createAndStartSSEAsync(logger);
 
@@ -225,10 +225,10 @@ void main() {
       expect(error, matcher);
     });
   });
-  test('# Sets user agent header on connect and sends', () async {
+  test('# sets user agent header on connect and sends', () async {
     await VerifyLogger.runAsync((logger) async {
-      HTTPRequest request;
-      final httpClient = TestHTTPClient().on((r, next) {
+      HttpRequest request;
+      final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
       });
@@ -246,10 +246,10 @@ void main() {
       expect(request.url, 'http://example.com');
     });
   });
-  test('# Overwrites library headers with user headers', () async {
+  test('# overwrites library headers with user headers', () async {
     await VerifyLogger.runAsync((logger) async {
-      HTTPRequest request;
-      final httpClient = TestHTTPClient().on((r, next) {
+      HttpRequest request;
+      final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
       });
@@ -271,13 +271,13 @@ void main() {
 
 Future<ServerSentEventsTransport> createAndStartSSEAsync(Logger logger,
     [String url,
-    dynamic Function() accessTokenFactory,
-    HTTPClient httpClient,
+    Object Function() accessTokenFactory,
+    HttpClient httpClient,
     Map<String, String> headers]) async {
   TestEventSource.eventSourceSet = Completer();
 
   final sse = ServerSentEventsTransport(
-      httpClient ?? TestHTTPClient(),
+      httpClient ?? TestHttpClient(),
       accessTokenFactory,
       logger,
       true,

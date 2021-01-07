@@ -1,19 +1,19 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:html' as chromium;
 
 import 'exceptions.dart';
 import 'http_client.dart';
 import 'logger.dart';
 
-HTTPClient createClient(Logger logger) => _HTTPClient(logger);
+HttpClient createClient(Logger logger) => _HttpClient(logger);
 
-class _HTTPClient extends HTTPClient {
+class _HttpClient extends HttpClient {
   final Logger _logger;
 
-  _HTTPClient(this._logger);
+  _HttpClient(this._logger);
 
   @override
-  Future<HTTPResponse> sendAsync(HTTPRequest request) {
+  Future<HttpResponse> sendAsync(HttpRequest request) {
     if (request.abortSignal != null && request.abortSignal.aborted) {
       final error = AbortException();
       return Future.error(error);
@@ -27,9 +27,9 @@ class _HTTPClient extends HTTPClient {
       return Future.error(error);
     }
 
-    final completer = Completer<HTTPResponse>();
+    final completer = Completer<HttpResponse>();
 
-    final xhr = HttpRequest();
+    final xhr = chromium.HttpRequest();
 
     xhr.open(request.method, request.url, async: true);
     xhr.withCredentials = request.withCredentials ?? true;
@@ -66,11 +66,11 @@ class _HTTPClient extends HTTPClient {
       }
 
       if (xhr.status >= 200 && xhr.status < 300) {
-        final response = HTTPResponse(
+        final response = HttpResponse(
             xhr.status, xhr.statusText, xhr.response ?? xhr.responseText);
         completer.complete(response);
       } else {
-        final error = HTTPException(xhr.statusText, xhr.status);
+        final error = HttpException(xhr.statusText, xhr.status);
         completer.completeError(error);
       }
     });
@@ -78,7 +78,7 @@ class _HTTPClient extends HTTPClient {
     xhr.onError.first.then((_) {
       _logger.log(LogLevel.warning,
           'Error from HTTP request. ${xhr.status}: ${xhr.statusText}.');
-      final error = HTTPException(xhr.statusText, xhr.status);
+      final error = HttpException(xhr.statusText, xhr.status);
       completer.completeError(error);
     });
 

@@ -1,34 +1,33 @@
 import 'package:cure/signalr.dart';
 import 'package:test/test.dart';
+import 'package:tuple/tuple.dart';
 
 void main() {
-  group('# Should parse correctly', () {
-    final items = [
-      MapEntry('\u001e', ['']),
-      MapEntry('\u001e\u001e', ['', '']),
-      MapEntry('Hello\u001e', ['Hello']),
-      MapEntry('Hello,\u001eWorld!\u001e', ['Hello,', 'World!']),
+  group('# should parse correctly', () {
+    final elements = [
+      Tuple2('\u001e', ['']),
+      Tuple2('\u001e\u001e', ['', '']),
+      Tuple2('Hello\u001e', ['Hello']),
+      Tuple2('Hello,\u001eWorld!\u001e', ['Hello,', 'World!']),
     ];
-    for (var item in items) {
-      test('# ${Uri.encodeFull(item.key)}', () {
-        final messages = TextMessageFormat.parse(item.key);
-        expect(messages, item.value);
+    for (var element in elements) {
+      test('# ${Uri.encodeFull(element.item1)}', () {
+        final messages = TextMessageFormat.parse(element.item1);
+        expect(messages, element.item2);
       });
     }
   });
-
-  group('# Should fail to parse', () {
-    final items = [
-      MapEntry('', 'Message is incomplete.'),
-      MapEntry('ABC', 'Message is incomplete.'),
-      MapEntry('ABC\u001eXYZ', 'Message is incomplete.')
+  group('# should fail to parse', () {
+    final elements = [
+      Tuple2('', 'Message is incomplete.'),
+      Tuple2('ABC', 'Message is incomplete.'),
+      Tuple2('ABC\u001eXYZ', 'Message is incomplete.')
     ];
-    for (var item in items) {
-      test('# ${Uri.encodeFull(item.key)}', () {
-        final error = Exception(item.value);
-        final m = predicate((e) => '$e' == '$error');
+    for (var element in elements) {
+      test('# ${Uri.encodeFull(element.item1)}', () {
+        final m = predicate((e) => '$e' == 'Exception: ${element.item2}');
         final matcher = throwsA(m);
-        expect(() => TextMessageFormat.parse(item.key), matcher);
+        expect(() => TextMessageFormat.parse(element.item1), matcher);
       });
     }
   });

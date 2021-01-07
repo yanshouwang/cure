@@ -58,7 +58,7 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns an object that yields results from the server as they are received.
-  StreamResult<T> stream<T>(String methodName, [List<dynamic> args]);
+  StreamResult<T> stream<T>(String methodName, [List<Object> args]);
 
   /// Invokes a hub method on the server using the specified name and arguments. Does not wait for a response from the receiver.
   ///
@@ -70,7 +70,7 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns a [Future] that resolves when the invocation has been successfully sent, or rejects with an error.
-  Future<void> sendAsync(String methodName, [List<dynamic> args]);
+  Future<void> sendAsync(String methodName, [List<Object> args]);
 
   /// Invokes a hub method on the server using the specified name and arguments.
   ///
@@ -85,14 +85,14 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns a [Future] that resolves with the result of the server method (if any), or rejects with an error.
-  Future<T> invokeAsync<T>(String methodName, [List<dynamic> args]);
+  Future<T> invokeAsync<T>(String methodName, [List<Object> args]);
 
   /// Registers a handler that will be invoked when the hub method with the specified method name is invoked.
   ///
   /// [methodName] The name of the hub method to define.
   ///
   /// [newMethod] The handler that will be raised when the hub method is invoked.
-  void on(String methodName, void Function(List<dynamic> args) newMethod);
+  void on(String methodName, void Function(List<Object> args) newMethod);
 
   /// Removes the specified handler for the specified hub method.
   ///
@@ -101,7 +101,7 @@ abstract class HubConnection {
   ///
   /// [methodName] The name of the method to remove handlers for.
   /// [method] The handler to remove. This must be the same Function instance as the one passed to [HubConnection.on].
-  void off(String methodName, [void Function(List<dynamic> args) method]);
+  void off(String methodName, [void Function(List<Object> args) method]);
 
   /// Registers a handler that will be invoked when the connection is closed.
   ///
@@ -126,7 +126,7 @@ abstract class HubConnection {
 }
 
 class _HubConnection implements HubConnection {
-  final dynamic _cachedPingMessage;
+  final Object _cachedPingMessage;
   final Connection _connection;
   final Logger _logger;
   final RetryPolicy _reconnectPolicy;
@@ -134,7 +134,7 @@ class _HubConnection implements HubConnection {
   final HandshakeProtocol _handshakeProtocol;
   Map<String, void Function(HubMessage invocationEvent, Exception error)>
       _callbacks;
-  final Map<String, List<void Function(List<dynamic> args)>> _methods;
+  final Map<String, List<void Function(List<Object> args)>> _methods;
   int _invocationId;
   final List<void Function(Exception error)> _closedCallbacks;
   final List<void Function(Exception error)> _reconnectingCallbacks;
@@ -223,7 +223,7 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  StreamResult<T> stream<T>(String methodName, [List<dynamic> args]) {
+  StreamResult<T> stream<T>(String methodName, [List<Object> args]) {
     args ??= [];
     final streams = _replaceStreamingParams(args);
     final invocationDescriptor =
@@ -268,7 +268,7 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  Future<void> sendAsync(String methodName, [List<dynamic> args]) {
+  Future<void> sendAsync(String methodName, [List<Object> args]) {
     final streams = _replaceStreamingParams(args);
     final message = _createInvocation(methodName, args, true, streams.value);
     final sendFuture = _sendWithProtocolAsync(message);
@@ -279,13 +279,13 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  Future<T> invokeAsync<T>(String methodName, [List<dynamic> args]) {
+  Future<T> invokeAsync<T>(String methodName, [List<Object> args]) {
     args ??= [];
     final streams = _replaceStreamingParams(args);
     final invocationDescriptor =
         _createInvocation(methodName, args, false, streams.value);
 
-    final completer = Completer<dynamic>();
+    final completer = Completer<Object>();
 
     // invocationId will always have a value for a non-blocking invocation
     _callbacks[invocationDescriptor.invocationId] = (invocationEvent, error) {
@@ -320,7 +320,7 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  void on(String methodName, void Function(List<dynamic> args) newMethod) {
+  void on(String methodName, void Function(List<Object> args) newMethod) {
     if (methodName == null || newMethod == null) {
       return;
     }
@@ -339,7 +339,7 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  void off(String methodName, [void Function(List<dynamic> args) method]) {
+  void off(String methodName, [void Function(List<Object> args) method]) {
     if (methodName == null) {
       return;
     }
@@ -383,7 +383,7 @@ class _HubConnection implements HubConnection {
     }
   }
 
-  void _processIncomingData(dynamic data) {
+  void _processIncomingData(Object data) {
     _cleanupTimeout();
 
     if (!_receivedHandshakeResponse) {
@@ -422,7 +422,7 @@ class _HubConnection implements HubConnection {
 
           if (message.allowReconnect == true) {
             // It feels wrong not to await connection.stopAsync() here, but processIncomingData is called as part of an onreceive callback which is not async,
-            // this is already the behavior for serverTimeout(), and HTTPConnection.StopAsync() should catch and log all possible exceptions.
+            // this is already the behavior for serverTimeout(), and HttpConnection.StopAsync() should catch and log all possible exceptions.
             _connection.stopAsync(error);
           } else {
             // We cannot await stopInternal() here, but subsequent calls to stop() will await this if stopInternal() is still ongoing.
@@ -438,9 +438,9 @@ class _HubConnection implements HubConnection {
     _resetTimeoutPeriod();
   }
 
-  dynamic _processHandshakeResponse(dynamic data) {
+  Object _processHandshakeResponse(Object data) {
     HandshakeResponseMessage responseMessage;
-    dynamic remainingData;
+    Object remainingData;
 
     try {
       final tuple = _handshakeProtocol.parseHandshakeResponse(data);
@@ -639,7 +639,7 @@ class _HubConnection implements HubConnection {
 
     if (_connectionState == HubConnectionState.disconnecting) {
       _logger.log(LogLevel.debug,
-          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
+          'Call to HttpConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
       return _stopFuture;
     }
 
@@ -667,9 +667,9 @@ class _HubConnection implements HubConnection {
         Exception(
             'The connection was stopped before the hub handshake could complete.');
 
-    // HTTPConnection.stopAsync() should not complete until after either HTTPConnection.startAsync() fails
+    // HttpConnection.stopAsync() should not complete until after either HttpConnection.startAsync() fails
     // or the onclose callback is invoked. The onclose callback will transition the HubConnection
-    // to the disconnected state if need be before HTTPConnection.stopAsync() completes.
+    // to the disconnected state if need be before HttpConnection.stopAsync() completes.
     return _connection.stopAsync(error);
   }
 
@@ -690,7 +690,7 @@ class _HubConnection implements HubConnection {
   }
 
   void _launchStreams(
-      Map<int, StreamResult<dynamic>> streams, Future<void> futureQueue) {
+      Map<int, StreamResult<Object>> streams, Future<void> futureQueue) {
     if (streams.isEmpty) {
       return;
     }
@@ -724,14 +724,14 @@ class _HubConnection implements HubConnection {
     }
   }
 
-  MapEntry<Map<int, StreamResult<dynamic>>, List<String>>
-      _replaceStreamingParams(List<dynamic> args) {
-    final streams = <int, StreamResult<dynamic>>{};
+  MapEntry<Map<int, StreamResult<Object>>, List<String>>
+      _replaceStreamingParams(List<Object> args) {
+    final streams = <int, StreamResult<Object>>{};
     final streamIds = <String>[];
 
     for (var i = args.length - 1; i >= 0; i--) {
       final argument = args[i];
-      if (argument is StreamResult<dynamic>) {
+      if (argument is StreamResult<Object>) {
         final streamId = _invocationId;
         _invocationId++;
         // Store the stream for later use
@@ -746,7 +746,7 @@ class _HubConnection implements HubConnection {
     return MapEntry(streams, streamIds);
   }
 
-  InvocationMessage _createInvocation(String methodName, List<dynamic> args,
+  InvocationMessage _createInvocation(String methodName, List<Object> args,
       bool nonblocking, List<String> streamIds) {
     if (nonblocking) {
       if (streamIds.isNotEmpty) {
@@ -768,7 +768,7 @@ class _HubConnection implements HubConnection {
   }
 
   StreamInvocationMessage _createStreamInovation(
-      String methodName, List<dynamic> args, List<String> streamIds) {
+      String methodName, List<Object> args, List<String> streamIds) {
     final invocationId = _invocationId.toString();
     _invocationId++;
 
@@ -784,12 +784,12 @@ class _HubConnection implements HubConnection {
     return CancelInvocationMessage(id);
   }
 
-  StreamItemMessage _createStreamItemMessage(String id, dynamic item) {
+  StreamItemMessage _createStreamItemMessage(String id, Object item) {
     return StreamItemMessage(id, item: item);
   }
 
   CompletionMessage _createCompletionMessage(String id,
-      {Exception error, dynamic result}) {
+      {Exception error, Object result}) {
     if (error != null) {
       return CompletionMessage(id, error: '$error');
     }
@@ -797,12 +797,12 @@ class _HubConnection implements HubConnection {
     return CompletionMessage(id, result: result);
   }
 
-  Future<void> _sendWithProtocolAsync(dynamic message) {
+  Future<void> _sendWithProtocolAsync(Object message) {
     final data = _protocol.writeMessage(message);
     return _sendMessageAsync(data);
   }
 
-  Future<void> _sendMessageAsync(dynamic message) {
+  Future<void> _sendMessageAsync(Object message) {
     _resetKeepAliveInterval();
     return _connection.sendAsync(message);
   }

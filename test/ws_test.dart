@@ -5,7 +5,7 @@ import 'package:cure/ws.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('# A client can communicate with a WebSocket server', () async {
+  test('# a client can communicate with a WebSocket server', () async {
     final completer = Completer<void>();
 
     var httpServer = await HttpServer.bind('localhost', 0);

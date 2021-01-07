@@ -4,7 +4,7 @@ class TestTransport extends Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) {

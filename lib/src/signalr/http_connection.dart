@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 import 'package:cure/sse.dart';
 import 'package:cure/ws.dart';
 
@@ -10,8 +10,8 @@ import 'default_http_client.dart';
 import 'http_client.dart';
 import 'http_connection_options.dart';
 import 'http_connection_stub.dart'
-    if (dart.library.html) 'http_connection_html.dart'
-    if (dart.library.io) 'http_connection_io.dart';
+    if (dart.library.html) 'http_connection_chromium.dart'
+    if (dart.library.io) 'http_connection_dartium.dart';
 import 'logger.dart';
 import 'long_polling_transport.dart';
 import 'server_sent_events_transport.dart';
@@ -21,10 +21,10 @@ import 'web_socket_transport.dart';
 
 const MAX_REDIRECTS = 100;
 
-class HTTPConnection implements Connection {
-  HTTPClient _httpClient;
+class HttpConnection implements Connection {
+  HttpClient _httpClient;
   Logger _logger;
-  HTTPConnectionOptions _options;
+  HttpConnectionOptions _options;
   final int _negotiateVersion;
 
   ConnectionState _connectionState;
@@ -35,26 +35,26 @@ class HTTPConnection implements Connection {
   Future<void> _stopFuture;
   Completer<void> _stopCompleter;
   Exception _stopError;
-  dynamic Function() _accessTokenFactory;
+  Object Function() _accessTokenFactory;
   TransportSendQueue _sendQueue;
 
   @override
-  final Map<String, dynamic> features;
+  final Map<String, Object> features;
   @override
   String baseURL;
   @override
   String connectionId;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
   @override
   void Function(Exception error) onclose;
 
-  HTTPConnection(String url, [HTTPConnectionOptions options])
+  HttpConnection(String url, [HttpConnectionOptions options])
       : _negotiateVersion = 1,
         features = {} {
     Arg.isRequired(url, 'url');
 
-    options ??= HTTPConnectionOptions();
+    options ??= HttpConnectionOptions();
     _logger = createLogger(options.logger);
     baseURL = _resolveUrl(url);
 
@@ -66,7 +66,7 @@ class HTTPConnection implements Connection {
         EventSource.connect(url,
             headers: headers, withCredentials: withCredentials);
 
-    _httpClient = options.httpClient ?? DefaultHTTPClient(_logger);
+    _httpClient = options.httpClient ?? DefaultHttpClient(_logger);
     _connectionState = ConnectionState.disconnected;
     _connectionStarted = false;
     _options = options;
@@ -83,7 +83,7 @@ class HTTPConnection implements Connection {
   }
 
   @override
-  Future<void> sendAsync(dynamic data) {
+  Future<void> sendAsync(Object data) {
     if (_connectionState != ConnectionState.connected) {
       final error = Exception(
           "Cannot send data if the connection is not in the 'Connected' State.");
@@ -105,7 +105,7 @@ class HTTPConnection implements Connection {
 
     if (_connectionState != ConnectionState.disconnected) {
       final error = Exception(
-          "Cannot start an HTTPConnection that is not in the 'disconnected' state.");
+          "Cannot start an HttpConnection that is not in the 'disconnected' state.");
       return Future.error(error);
     }
 
@@ -118,7 +118,7 @@ class HTTPConnection implements Connection {
     if (_connectionState == ConnectionState.disconnecting) {
       // stop() was called and transitioned the client into the Disconnecting state.
       final message =
-          'Failed to start the HTTPConnection before stopAsync() was called.';
+          'Failed to start the HttpConnection before stopAsync() was called.';
       _logger.log(LogLevel.error, message);
 
       // We cannot await stopPromise inside startInternal since stopInternal awaits the startInternalPromise.
@@ -129,7 +129,7 @@ class HTTPConnection implements Connection {
     } else if (_connectionState != ConnectionState.connected) {
       // stop() was called and transitioned the client into the Disconnecting state.
       final message =
-          "HTTPConnection._startInternalAsync completed gracefully but didn't enter the connection into the connected state!";
+          "HttpConnection._startInternalAsync completed gracefully but didn't enter the connection into the connected state!";
       _logger.log(LogLevel.error, message);
       final error = Exception(message);
       return Future.error(error);
@@ -142,13 +142,13 @@ class HTTPConnection implements Connection {
   Future<void> stopAsync([Exception error]) async {
     if (_connectionState == ConnectionState.disconnected) {
       _logger.log(LogLevel.debug,
-          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnected state.');
+          'Call to HttpConnection.stopAsync($error) ignored because the connection is already in the disconnected state.');
       return Future.value();
     }
 
     if (_connectionState == ConnectionState.disconnecting) {
       _logger.log(LogLevel.debug,
-          'Call to HTTPConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
+          'Call to HttpConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
       return _stopFuture;
     }
 
@@ -170,9 +170,9 @@ class HTTPConnection implements Connection {
 
     try {
       if (_options.skipNegotiation == true) {
-        if (_options.transport == HTTPTransportType.webSockets) {
+        if (_options.transport == HttpTransportType.webSockets) {
           // No need to add a connection ID in this case
-          transport = _constructTransport(HTTPTransportType.webSockets);
+          transport = _constructTransport(HttpTransportType.webSockets);
           // We should just call connect directly in this case.
           // No fallback or negotiate in this case.
           await _startTransportAsync(url, transferFormat);
@@ -231,7 +231,7 @@ class HTTPConnection implements Connection {
         // Ensure the connection transitions to the connected state prior to completing this.startInternalPromise.
         // start() will handle the case when stop was called and startInternal exits still in the disconnecting state.
         _logger.log(
-            LogLevel.debug, 'The HTTPConnection connected successfully.');
+            LogLevel.debug, 'The HttpConnection connected successfully.');
         _connectionState = ConnectionState.connected;
       }
 
@@ -266,21 +266,21 @@ class HTTPConnection implements Connection {
         await transport.stopAsync();
       } catch (e) {
         _logger.log(LogLevel.error,
-            "HTTPConnection.transport.stopAsync() threw error '$e'.");
+            "HttpConnection.transport.stopAsync() threw error '$e'.");
         _stopConnection();
       }
 
       transport = null;
     } else {
       _logger.log(LogLevel.debug,
-          'HTTPConnection.transport is null in HTTPConnection.stopAsync() because startAsync() failed.');
+          'HttpConnection.transport is null in HttpConnection.stopAsync() because startAsync() failed.');
       _stopConnection();
     }
   }
 
   void _stopConnection([Exception error]) {
     _logger.log(LogLevel.debug,
-        'HTTPConnection.stopConnection($error) called while in state $_connectionState.');
+        'HttpConnection.stopConnection($error) called while in state $_connectionState.');
 
     transport = null;
 
@@ -290,15 +290,15 @@ class HTTPConnection implements Connection {
 
     if (_connectionState == ConnectionState.disconnected) {
       _logger.log(LogLevel.debug,
-          'Call to HTTPConnection.stopConnection($error) was ignored because the connection is already in the disconnected state.');
+          'Call to HttpConnection.stopConnection($error) was ignored because the connection is already in the disconnected state.');
       return;
     }
 
     if (_connectionState == ConnectionState.connecting) {
       _logger.log(LogLevel.warning,
-          'Call to HTTPConnection.stopConnection($error) was ignored because the connection is still in the connecting state.');
+          'Call to HttpConnection.stopConnection($error) was ignored because the connection is still in the connecting state.');
       throw Exception(
-          'HTTPConnection.stopConnection($error) was called while the connection is still in the connecting state.');
+          'HttpConnection.stopConnection($error) was called while the connection is still in the connecting state.');
     }
 
     if (_connectionState == ConnectionState.disconnecting) {
@@ -329,13 +329,13 @@ class HTTPConnection implements Connection {
         onclose?.call(error);
       } catch (e) {
         _logger.log(
-            LogLevel.error, 'HTTPConnection.onclose($error) threw error `$e`.');
+            LogLevel.error, 'HttpConnection.onclose($error) threw error `$e`.');
       }
     }
   }
 
-  Transport _constructTransport(HTTPTransportType transport) {
-    if (transport == HTTPTransportType.webSockets) {
+  Transport _constructTransport(HttpTransportType transport) {
+    if (transport == HttpTransportType.webSockets) {
       if (_options.webSocket == null) {
         throw Exception("'WebSocket' is not supported in your environment.");
       }
@@ -346,7 +346,7 @@ class HTTPConnection implements Connection {
           _options.logMessageContent ?? false,
           _options.webSocket,
           _options.headers ?? {});
-    } else if (transport == HTTPTransportType.serverSentEvents) {
+    } else if (transport == HttpTransportType.serverSentEvents) {
       if (_options.eventSource == null) {
         throw Exception("'EventSource' is not supported in your environment.");
       }
@@ -358,7 +358,7 @@ class HTTPConnection implements Connection {
           _options.eventSource,
           _options.withCredentials,
           _options.headers ?? {});
-    } else if (transport == HTTPTransportType.longPolling) {
+    } else if (transport == HttpTransportType.longPolling) {
       return LongPollingTransport(
           _httpClient,
           _accessTokenFactory,
@@ -398,7 +398,7 @@ class HTTPConnection implements Connection {
     final negotiateURL = _resolveNegotiateURL(url);
     _logger.log(LogLevel.debug, 'Sending negotiation request: $negotiateURL.');
     try {
-      final options = HTTPRequest(
+      final options = HttpRequest(
           content: '',
           headers: headers,
           withCredentials: _options.withCredentials);
@@ -410,7 +410,7 @@ class HTTPConnection implements Connection {
         return Future.error(error);
       }
 
-      var obj = JSON.fromJSON(response.content);
+      var obj = json.decode(response.content as String);
       var negotiateResponse = NegotiateResponse.fromJSON(obj);
       if (negotiateResponse.negotiateVersion == null ||
           negotiateResponse.negotiateVersion < 1) {
@@ -430,7 +430,7 @@ class HTTPConnection implements Connection {
 
   Future<void> _createTransportAsync(
       String url,
-      dynamic transport,
+      Object transport,
       NegotiateResponse negotiateResponse,
       TransferFormat transferFormat) async {
     var connectURL = _createConnectURL(url, negotiateResponse.connectionToken);
@@ -517,8 +517,8 @@ class HTTPConnection implements Connection {
     return url + (url.contains('?') ? '&' : '?') + 'id=$connectionToken';
   }
 
-  dynamic _resolveTransportOrError(AvailableTransport endpoint,
-      dynamic requestedTransport, TransferFormat requestedTransferFormat) {
+  Object _resolveTransportOrError(AvailableTransport endpoint,
+      Object requestedTransport, TransferFormat requestedTransferFormat) {
     final transport = endpoint.transport;
     if (transport == null) {
       _logger.log(LogLevel.debug,
@@ -529,9 +529,9 @@ class HTTPConnection implements Connection {
       if (_transportMatches(requestedTransport, transport)) {
         final transferFormats = endpoint.transferFormats;
         if (transferFormats.contains(requestedTransferFormat)) {
-          if ((transport == HTTPTransportType.webSockets &&
+          if ((transport == HttpTransportType.webSockets &&
                   _options.webSocket == null) ||
-              (transport == HTTPTransportType.serverSentEvents &&
+              (transport == HttpTransportType.serverSentEvents &&
                   _options.eventSource == null)) {
             _logger.log(LogLevel.debug,
                 "Skipping transport '$transport' because it is not supported in your environment.");
@@ -560,18 +560,18 @@ class HTTPConnection implements Connection {
   }
 
   bool _transportMatches(
-      dynamic requestedTransport, HTTPTransportType actualTransport) {
-    final value = requestedTransport is HTTPTransportType
+      Object requestedTransport, HttpTransportType actualTransport) {
+    final value = requestedTransport is HttpTransportType
         ? (requestedTransport.value)
         : requestedTransport;
     return value == null ||
-        value == HTTPTransportType.none.value ||
+        value == HttpTransportType.none.value ||
         ((actualTransport.value & value) != 0);
   }
 }
 
 abstract class TransportSendQueue {
-  Future<void> sendAsync(dynamic data);
+  Future<void> sendAsync(Object data);
   Future<void> stopAsync();
 
   factory TransportSendQueue(Transport transport) =>
@@ -580,7 +580,7 @@ abstract class TransportSendQueue {
 
 class _TransportSendQueue implements TransportSendQueue {
   final Transport _transport;
-  final List<dynamic> _buffer;
+  final List<Object> _buffer;
   Completer<void> _sendBufferedData;
   bool _executing;
   Completer<void> _transportResult;
@@ -595,13 +595,13 @@ class _TransportSendQueue implements TransportSendQueue {
   }
 
   @override
-  Future<void> sendAsync(dynamic data) {
+  Future<void> sendAsync(Object data) {
     _bufferData(data);
     _transportResult ??= Completer();
     return _transportResult.future;
   }
 
-  void _bufferData(dynamic data) {
+  void _bufferData(Object data) {
     if (_buffer.isNotEmpty && _buffer[0].runtimeType != data.runtimeType) {
       throw Exception(
           'Expected data to be of type ${_buffer[0].runtimeType} but was of type ${data.runtimeType}');
@@ -640,7 +640,7 @@ class _TransportSendQueue implements TransportSendQueue {
 
       final data = _buffer[0] is String
           ? _buffer.join('')
-          : _TransportSendQueue._concatBuffers(_buffer.cast<ByteBuffer>());
+          : _TransportSendQueue._concatBuffers(_buffer.cast<Uint8List>());
 
       _buffer.clear();
 
@@ -653,17 +653,17 @@ class _TransportSendQueue implements TransportSendQueue {
     }
   }
 
-  static ByteBuffer _concatBuffers(List<ByteBuffer> arrayBuffers) {
+  static Uint8List _concatBuffers(List<Uint8List> arrayBuffers) {
     final totalLength =
         arrayBuffers.map((b) => b.lengthInBytes).reduce((a, b) => a + b);
     final result = Uint8List(totalLength);
     var offset = 0;
     for (final item in arrayBuffers) {
-      result.setAll(offset, item.asUint8List());
+      result.setAll(offset, item);
       offset += item.lengthInBytes;
     }
 
-    return result.buffer;
+    return result;
   }
 }
 
@@ -677,7 +677,7 @@ abstract class NegotiateResponse {
   String get error;
   String get protocolVersion;
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 
   factory NegotiateResponse(
       {String connectionId,
@@ -692,12 +692,12 @@ abstract class NegotiateResponse {
         availableTransports, url, accessToken, error, protocolVersion);
   }
 
-  factory NegotiateResponse.fromJSON(Map<String, dynamic> obj) {
+  factory NegotiateResponse.fromJSON(Map<String, Object> obj) {
     final connectionId = obj['connectionId'] as String;
     final connectionToken = obj['connectionToken'] as String;
     final negotiateVersion = obj['negotiateVersion'] as int;
-    final availableTransports = (obj['availableTransports'] as List<dynamic>)
-        ?.map((e) => AvailableTransport.fromJSON(e as Map<String, dynamic>))
+    final availableTransports = (obj['availableTransports'] as List<Object>)
+        ?.map((e) => AvailableTransport.fromJSON(e as Map<String, Object>))
         ?.toList();
     final url = obj['url'] as String;
     final accessToken = obj['accessToken'] as String;
@@ -737,8 +737,8 @@ class _NegotiateResponse implements NegotiateResponse {
       this.protocolVersion);
 
   @override
-  Map<String, dynamic> toJSON() {
-    var obj = <String, dynamic>{};
+  Map<String, Object> toJSON() {
+    var obj = <String, Object>{};
     obj.writeNotNull('connectionId', connectionId);
     obj.writeNotNull('connectionToken', connectionToken);
     obj.writeNotNull('negotiateVersion', negotiateVersion);
@@ -752,19 +752,19 @@ class _NegotiateResponse implements NegotiateResponse {
 }
 
 abstract class AvailableTransport {
-  HTTPTransportType get transport;
+  HttpTransportType get transport;
   List<TransferFormat> get transferFormats;
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 
   factory AvailableTransport(
-      HTTPTransportType transport, List<TransferFormat> transferFormats) {
+      HttpTransportType transport, List<TransferFormat> transferFormats) {
     return _AvailableTransport(transport, transferFormats);
   }
 
-  factory AvailableTransport.fromJSON(Map<String, dynamic> obj) {
-    final transport = HTTPTransportType.fromJSON(obj['transport'] as String);
-    final transferFormats = (obj['transferFormats'] as List<dynamic>)
+  factory AvailableTransport.fromJSON(Map<String, Object> obj) {
+    final transport = HttpTransportType.fromJSON(obj['transport'] as String);
+    final transferFormats = (obj['transferFormats'] as List<Object>)
         .map((e) => TransferFormat.fromJSON(e as String))
         .toList();
     return _AvailableTransport(transport, transferFormats);
@@ -773,15 +773,15 @@ abstract class AvailableTransport {
 
 class _AvailableTransport implements AvailableTransport {
   @override
-  final HTTPTransportType transport;
+  final HttpTransportType transport;
   @override
   final List<TransferFormat> transferFormats;
 
   _AvailableTransport(this.transport, this.transferFormats);
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'transport': transport,
       'transferFormats': transferFormats,
     };

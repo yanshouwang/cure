@@ -5,10 +5,10 @@ import 'dart:typed_data';
 /// ByteArrayStream Extension
 extension ByteArrayStreamExtension on Stream<List<int>> {
   /// Extract [ByteBuffer] from this stream.
-  Future<ByteBuffer> extractAsync() {
-    var completer = Completer<ByteBuffer>();
+  Future<Uint8List> extractAsync() {
+    var completer = Completer<Uint8List>();
     var sink = ByteConversionSink.withCallback((elements) {
-      final value = Uint8List.fromList(elements).buffer;
+      final value = Uint8List.fromList(elements);
       completer.complete(value);
     });
     listen((data) => sink.add(data),

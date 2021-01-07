@@ -1,19 +1,19 @@
 import 'dart:typed_data';
 
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
 
 class TestConnection implements Connection {
   @override
   String baseURL;
   @override
-  final Map<String, dynamic> features;
+  final Map<String, Object> features;
   @override
   String connectionId;
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   List<dynamic> sentData;
   List<dynamic> parsedSentData;
@@ -51,8 +51,7 @@ class TestConnection implements Connection {
       return sendFuture();
     } else {
       final invocation = TextMessageFormat.parse(data)[0];
-      final parsedInvocation =
-          JSON.fromJSON(invocation) as Map<String, dynamic>;
+      final parsedInvocation = json.decode(invocation) as Map<String, Object>;
       final invocationId = parsedInvocation['invocationId'];
       if (parsedInvocation.containsKey('protocol') &&
           parsedInvocation.containsKey('version') &&
@@ -80,15 +79,15 @@ class TestConnection implements Connection {
   }
 
   void receiveHandshakeResponse([String error]) {
-    final data = <String, dynamic>{};
+    final data = <String, Object>{};
     if (error != null) {
       data['error'] = error;
     }
     receive(data);
   }
 
-  void receive(dynamic data) {
-    final payload = JSON.toJSON(data);
+  void receive(Object data) {
+    final payload = json.encode(data);
     _invokeOnReceive(TextMessageFormat.write(payload));
   }
 
@@ -96,11 +95,11 @@ class TestConnection implements Connection {
     _invokeOnReceive(data);
   }
 
-  void receiveBinary(ByteBuffer data) {
+  void receiveBinary(Uint8List data) {
     _invokeOnReceive(data);
   }
 
-  void _invokeOnReceive(dynamic data) {
+  void _invokeOnReceive(Object data) {
     onreceive?.call(data);
   }
 }

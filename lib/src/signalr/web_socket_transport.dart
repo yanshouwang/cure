@@ -14,7 +14,7 @@ class WebSocketTransport implements Transport {
   final WebSocket Function(String url,
       {List<String> protocols,
       Map<String, String> headers}) _webSocketConstructor;
-  final HTTPClient _httpClient;
+  final HttpClient _httpClient;
   final Map<String, String> _headers;
 
   WebSocket _webSocket;
@@ -22,7 +22,7 @@ class WebSocketTransport implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic error) onreceive;
+  void Function(Object error) onreceive;
 
   WebSocketTransport(this._httpClient, this._accessTokenFactory, this._logger,
       this._logMessageContent, this._webSocketConstructor, this._headers)
@@ -132,7 +132,7 @@ class WebSocketTransport implements Transport {
   @override
   Future<void> stopAsync() {
     if (_webSocket != null) {
-      // Manually invoke onclose callback inline so we know the HTTPConnection was closed properly before returning
+      // Manually invoke onclose callback inline so we know the HttpConnection was closed properly before returning
       // This also solves an issue where websocket.onclose could take 18+ seconds to trigger during network disconnects
       close();
     }
@@ -140,7 +140,7 @@ class WebSocketTransport implements Transport {
     return Future.value();
   }
 
-  void close([dynamic error]) {
+  void close([Object error]) {
     // webSocket will be null if the transport did not start successfully
     if (_webSocket != null) {
       // Clear websocket handlers because we are considering the socket closed now

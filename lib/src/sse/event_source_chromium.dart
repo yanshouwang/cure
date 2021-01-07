@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'dart:html' as chromium;
 
 import 'event_source.dart';
 
@@ -7,7 +7,7 @@ EventSource connectEventSource(String url,
     _EventSource.connect(url, withCrendentials: withCredentials);
 
 class _EventSource implements EventSource {
-  final html.EventSource _inner;
+  final chromium.EventSource _inner;
 
   @override
   String get url => _inner.url;
@@ -27,7 +27,7 @@ class _EventSource implements EventSource {
   void _listen() {
     _inner.onOpen.first.then((_) => onopen?.call());
     _inner.onError.first.then((event) {
-      final error = event is html.ErrorEvent
+      final error = event is chromium.ErrorEvent
           ? event.error
           : Exception('EventSource error event: $event');
       onerror?.call(error);
@@ -41,7 +41,7 @@ class _EventSource implements EventSource {
   }
 
   factory _EventSource.connect(String url, {bool withCrendentials}) {
-    final inner = html.EventSource(url, withCredentials: withCrendentials);
+    final inner = chromium.EventSource(url, withCredentials: withCrendentials);
     return _EventSource._(inner);
   }
 }

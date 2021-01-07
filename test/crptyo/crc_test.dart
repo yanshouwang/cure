@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:cure/cryptography.dart';
+import 'package:cure/crypto.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -302,7 +302,7 @@ void main() {
       expect(actual, matcher);
     });
   });
-  test('# Verify', () {
+  test('# verify', () {
     final crc = CRC.crc4ITU();
     final data = utf8.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
     final actual = crc.verify(data, 0x0B);

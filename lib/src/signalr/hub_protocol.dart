@@ -1,4 +1,4 @@
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 
 import 'logger.dart';
 import 'transport.dart';
@@ -16,21 +16,21 @@ abstract class HubProtocol {
 
   /// Creates an array of [HubMessage] objects from the specified serialized representation.
   ///
-  /// If [HubProtocol.transferFormat] is 'Text', the `input` parameter must be a string, otherwise it must be an ByteBuffer.
+  /// If [HubProtocol.transferFormat] is 'Text', the `input` parameter must be a string, otherwise it must be an Uint8List.
   ///
-  /// [input] A string, ByteBuffer containing the serialized representation.
+  /// [input] A string, Uint8List containing the serialized representation.
   ///
   /// [logger] A logger that will be used to log messages that occur during parsing.
-  List<HubMessage> parseMessages(dynamic input, Logger logger);
+  List<HubMessage> parseMessages(Object input, Logger logger);
 
   /// Writes the specified {@link @microsoft/signalr.HubMessage} to a string or ArrayBuffer and returns it.
   ///
-  /// If [HubProtocol.transferFormat] is 'Text', the result of this method will be a string, otherwise it will be an ByteBuffer.
+  /// If [HubProtocol.transferFormat] is 'Text', the result of this method will be a string, otherwise it will be an Uint8List.
   ///
   /// [message] The message to write.
   ///
-  /// Returns a string or ByteBuffer containing the serialized representation of the message.
-  dynamic writeMessage(HubMessage message);
+  /// Returns a string or Uint8List containing the serialized representation of the message.
+  Object writeMessage(HubMessage message);
 }
 
 /// Defines properties common to all Hub messages.
@@ -57,12 +57,12 @@ abstract class InvocationMessage extends HubInvocationMessage {
   String get target;
 
   /// The target method arguments.
-  List<dynamic> get arguments;
+  List<Object> get arguments;
 
   /// The target methods stream IDs.
   List<String> get streamIds;
 
-  factory InvocationMessage(String target, List<dynamic> arguments,
+  factory InvocationMessage(String target, List<Object> arguments,
       {Map<String, String> headers,
       String invocationId,
       List<String> streamIds}) {
@@ -70,19 +70,19 @@ abstract class InvocationMessage extends HubInvocationMessage {
         headers, invocationId, target, arguments, streamIds);
   }
 
-  factory InvocationMessage.fromJSON(Map<String, dynamic> obj) {
+  factory InvocationMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.invocation.toJSON());
     final headers =
-        (obj['headers'] as Map<String, dynamic>)?.cast<String, String>();
+        (obj['headers'] as Map<String, Object>)?.cast<String, String>();
     final invocationId = obj['invocationId'] as String;
     final target = obj['target'] as String;
-    final arguments = obj['arguments'] as List<dynamic>;
-    final streamIds = (obj['streamIds'] as List<dynamic>)?.cast<String>();
+    final arguments = obj['arguments'] as List<Object>;
+    final streamIds = (obj['streamIds'] as List<Object>)?.cast<String>();
     return _InvocationMessage(
         headers, invocationId, target, arguments, streamIds);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _InvocationMessage implements InvocationMessage {
@@ -95,7 +95,7 @@ class _InvocationMessage implements InvocationMessage {
   @override
   final String target;
   @override
-  final List<dynamic> arguments;
+  final List<Object> arguments;
   @override
   final List<String> streamIds;
 
@@ -104,8 +104,8 @@ class _InvocationMessage implements InvocationMessage {
       : type = MessageType.invocation;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
       'target': target,
       'arguments': arguments,
@@ -123,32 +123,32 @@ abstract class StreamInvocationMessage extends HubInvocationMessage {
   String get target;
 
   /// The target method arguments.
-  List<dynamic> get arguments;
+  List<Object> get arguments;
 
   /// The target methods stream IDs.
   List<String> get streamIds;
 
   factory StreamInvocationMessage(
-      String invocationId, String target, List<dynamic> arguments,
+      String invocationId, String target, List<Object> arguments,
       {Map<String, String> headers, List<String> streamIds}) {
     return _StreamInvocationMessage(
         headers, invocationId, target, arguments, streamIds);
   }
 
-  factory StreamInvocationMessage.fromJSON(Map<String, dynamic> obj) {
+  factory StreamInvocationMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.streamInvocation.toJSON());
     final headers =
-        ((obj['headers'] as Map<String, dynamic>)?.cast<String, String>())
+        ((obj['headers'] as Map<String, Object>)?.cast<String, String>())
             ?.cast<String, String>();
     final invocationId = obj['invocationId'] as String;
     final target = obj['target'] as String;
-    final arguments = obj['arguments'] as List<dynamic>;
-    final streamIds = (obj['streamIds'] as List<dynamic>)?.cast<String>();
+    final arguments = obj['arguments'] as List<Object>;
+    final streamIds = (obj['streamIds'] as List<Object>)?.cast<String>();
     return _StreamInvocationMessage(
         headers, invocationId, target, arguments, streamIds);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _StreamInvocationMessage implements StreamInvocationMessage {
@@ -161,7 +161,7 @@ class _StreamInvocationMessage implements StreamInvocationMessage {
   @override
   final String target;
   @override
-  final List<dynamic> arguments;
+  final List<Object> arguments;
   @override
   final List<String> streamIds;
 
@@ -170,8 +170,8 @@ class _StreamInvocationMessage implements StreamInvocationMessage {
       : type = MessageType.streamInvocation;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
       'invocationId': invocationId,
       'target': target,
@@ -186,23 +186,23 @@ class _StreamInvocationMessage implements StreamInvocationMessage {
 /// A hub message representing a single item produced as part of a result stream.
 abstract class StreamItemMessage extends HubInvocationMessage {
   /// The item produced by the server.
-  dynamic get item;
+  Object get item;
 
   factory StreamItemMessage(String invocationId,
-      {Map<String, String> headers, dynamic item}) {
+      {Map<String, String> headers, Object item}) {
     return _StreamItemMessage(headers, invocationId, item);
   }
 
-  factory StreamItemMessage.fromJSON(Map<String, dynamic> obj) {
+  factory StreamItemMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.streamItem.toJSON());
     final headers =
-        (obj['headers'] as Map<String, dynamic>)?.cast<String, String>();
+        (obj['headers'] as Map<String, Object>)?.cast<String, String>();
     final invocationId = obj['invocationId'] as String;
     final item = obj['item'];
     return _StreamItemMessage(headers, invocationId, item);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _StreamItemMessage implements StreamItemMessage {
@@ -213,14 +213,14 @@ class _StreamItemMessage implements StreamItemMessage {
   @override
   final String invocationId;
   @override
-  final dynamic item;
+  final Object item;
 
   _StreamItemMessage(this.headers, this.invocationId, this.item)
       : type = MessageType.streamItem;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
       'invocationId': invocationId,
     };
@@ -240,24 +240,24 @@ abstract class CompletionMessage extends HubInvocationMessage {
   /// The result produced by the invocation, if any.
   ///
   /// Either [CompletionMessage.error] or [CompletionMessage.result] must be defined, but not both.
-  dynamic get result;
+  Object get result;
 
   factory CompletionMessage(String invocationId,
-      {Map<String, String> headers, String error, dynamic result}) {
+      {Map<String, String> headers, String error, Object result}) {
     return _CompletionMessage(headers, invocationId, error, result);
   }
 
-  factory CompletionMessage.fromJSON(Map<String, dynamic> obj) {
+  factory CompletionMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.completion.toJSON());
     final headers =
-        (obj['headers'] as Map<String, dynamic>)?.cast<String, String>();
+        (obj['headers'] as Map<String, Object>)?.cast<String, String>();
     final invocationId = obj['invocationId'] as String;
     final error = obj['error'] as String;
     final result = obj['result'];
     return _CompletionMessage(headers, invocationId, error, result);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _CompletionMessage implements CompletionMessage {
@@ -270,14 +270,14 @@ class _CompletionMessage implements CompletionMessage {
   @override
   final String error;
   @override
-  final dynamic result;
+  final Object result;
 
   _CompletionMessage(this.headers, this.invocationId, this.error, this.result)
       : type = MessageType.completion;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
       'invocationId': invocationId,
     };
@@ -295,15 +295,15 @@ abstract class CancelInvocationMessage extends HubInvocationMessage {
     return _CancelInvocationMessage(headers, invocationId);
   }
 
-  factory CancelInvocationMessage.fromJSON(Map<String, dynamic> obj) {
+  factory CancelInvocationMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.cancelInvocation.toJSON());
     final headers =
-        (obj['headers'] as Map<String, dynamic>)?.cast<String, String>();
+        (obj['headers'] as Map<String, Object>)?.cast<String, String>();
     final invocationId = obj['invocationId'];
     return _CancelInvocationMessage(headers, invocationId);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _CancelInvocationMessage implements CancelInvocationMessage {
@@ -318,8 +318,8 @@ class _CancelInvocationMessage implements CancelInvocationMessage {
       : type = MessageType.cancelInvocation;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
       'invocationId': invocationId,
     };
@@ -334,12 +334,12 @@ abstract class PingMessage extends HubMessage {
     return _PingMessage();
   }
 
-  factory PingMessage.fromJSON(Map<String, dynamic> obj) {
+  factory PingMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.ping.toJSON());
     return _PingMessage();
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _PingMessage implements PingMessage {
@@ -349,8 +349,8 @@ class _PingMessage implements PingMessage {
   _PingMessage() : type = MessageType.ping;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
     };
     return obj;
@@ -373,14 +373,14 @@ abstract class CloseMessage extends HubMessage {
     return _CloseMessage(error, allowReconnect);
   }
 
-  factory CloseMessage.fromJSON(Map<String, dynamic> obj) {
+  factory CloseMessage.fromJSON(Map<String, Object> obj) {
     obj.verify('type', MessageType.close.toJSON());
     final error = obj['error'] as String;
     final allowReconnect = obj['allowReconnect'] as bool;
     return _CloseMessage(error, allowReconnect);
   }
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 }
 
 class _CloseMessage implements CloseMessage {
@@ -394,8 +394,8 @@ class _CloseMessage implements CloseMessage {
   _CloseMessage(this.error, this.allowReconnect) : type = MessageType.close;
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'type': type,
     };
     obj.writeNotNull('error', error);

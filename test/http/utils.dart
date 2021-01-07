@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 
 HttpServer _server;
 
@@ -73,7 +73,7 @@ Future<void> startServer() async {
             if (content.isNotEmpty) {
               obj['content'] = content;
             }
-            final content1 = JSON.toJSON(obj);
+            final content1 = json.encode(obj);
             response
               ..contentLength = content1.length
               ..write(content1);

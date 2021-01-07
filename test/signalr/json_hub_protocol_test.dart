@@ -1,10 +1,11 @@
 import 'package:cure/signalr.dart';
 import 'package:test/test.dart';
+import 'package:tuple/tuple.dart';
 
 import 'common.dart';
 
 void main() {
-  test('# Can write/read non-blocking Invocation message', () async {
+  test('# can write/read non-blocking Invocation message', () async {
     await VerifyLogger.runAsync((logger) async {
       final invocation = InvocationMessage(
         'myMethod',
@@ -18,57 +19,39 @@ void main() {
         headers: {},
       );
 
-      final protocol = JSONHubProtocol();
-      final messages = protocol.parseMessages(
-        protocol.writeMessage(invocation),
-        logger,
-      );
+      final protocol = JsonHubProtocol();
+      final data = protocol.writeMessage(invocation);
+      final messages = protocol.parseMessages(data, logger);
       expect(messages.length, 1);
       expect(
         messages[0],
         isA<InvocationMessage>(),
       );
       final message = messages[0] as InvocationMessage;
-      expect(message.target, invocation.target);
-      expect(message.arguments, invocation.arguments);
-      expect(message.headers, invocation.headers);
-      expect(
-        [message.invocationId, message.streamIds],
-        everyElement(isNull),
-      );
+      matchInvocationMessage(message, invocation);
     });
   });
-  test('# Can read Invocation message with Date argument', () async {
+  test('# can read Invocation message with Date argument', () async {
     await VerifyLogger.runAsync((logger) async {
       final invocation = InvocationMessage(
         'myMethod',
-        [
-          DateTime.utc(2018, 1, 1, 12, 34, 56).millisecondsSinceEpoch,
-        ],
+        [DateTime.utc(2018, 1, 1, 12, 34, 56).millisecondsSinceEpoch],
         headers: {},
       );
 
-      final protocol = JSONHubProtocol();
-      final messages = protocol.parseMessages(
-        protocol.writeMessage(invocation),
-        logger,
-      );
+      final protocol = JsonHubProtocol();
+      final data = protocol.writeMessage(invocation);
+      final messages = protocol.parseMessages(data, logger);
       expect(messages.length, 1);
       expect(
         messages[0],
         isA<InvocationMessage>(),
       );
       final message = messages[0] as InvocationMessage;
-      expect(message.target, invocation.target);
-      expect(message.arguments, invocation.arguments);
-      expect(message.headers, invocation.headers);
-      expect(
-        [message.invocationId, message.streamIds],
-        everyElement(isNull),
-      );
+      matchInvocationMessage(message, invocation);
     });
   });
-  test('# Can write/read Invocation message with headers', () async {
+  test('# can write/read Invocation message with headers', () async {
     await VerifyLogger.runAsync((logger) async {
       final invocation = InvocationMessage(
         'myMethod',
@@ -84,27 +67,19 @@ void main() {
         },
       );
 
-      final protocol = JSONHubProtocol();
-      final messages = protocol.parseMessages(
-        protocol.writeMessage(invocation),
-        logger,
-      );
+      final protocol = JsonHubProtocol();
+      final data = protocol.writeMessage(invocation);
+      final messages = protocol.parseMessages(data, logger);
       expect(messages.length, 1);
       expect(
         messages[0],
         isA<InvocationMessage>(),
       );
       final message = messages[0] as InvocationMessage;
-      expect(message.target, invocation.target);
-      expect(message.arguments, invocation.arguments);
-      expect(message.headers, invocation.headers);
-      expect(
-        [message.invocationId, message.streamIds],
-        everyElement(isNull),
-      );
+      matchInvocationMessage(message, invocation);
     });
   });
-  test('# Can write/read Invocation message', () async {
+  test('# can write/read Invocation message', () async {
     await VerifyLogger.runAsync((logger) async {
       final invocation = InvocationMessage(
         'myMethod',
@@ -118,29 +93,21 @@ void main() {
         headers: {},
       );
 
-      final protocol = JSONHubProtocol();
-      final messages = protocol.parseMessages(
-        protocol.writeMessage(invocation),
-        logger,
-      );
+      final protocol = JsonHubProtocol();
+      final data = protocol.writeMessage(invocation);
+      final messages = protocol.parseMessages(data, logger);
       expect(messages.length, 1);
       expect(
         messages[0],
         isA<InvocationMessage>(),
       );
       final message = messages[0] as InvocationMessage;
-      expect(message.target, invocation.target);
-      expect(message.arguments, invocation.arguments);
-      expect(message.headers, invocation.headers);
-      expect(
-        [message.invocationId, message.streamIds],
-        everyElement(isNull),
-      );
+      matchInvocationMessage(message, invocation);
     });
   });
 
   [
-    MapEntry(
+    Tuple2(
       '{"type":3, "invocationId": "abc", "error": "Err", "result": null, "headers": {}}${TextMessageFormat.recordSeparator}',
       CompletionMessage(
         'abc',
@@ -149,7 +116,7 @@ void main() {
         result: null,
       ),
     ),
-    MapEntry(
+    Tuple2(
       '{"type":3, "invocationId": "abc", "result": "OK", "headers": {}}${TextMessageFormat.recordSeparator}',
       CompletionMessage(
         'abc',
@@ -157,7 +124,7 @@ void main() {
         result: 'OK',
       ),
     ),
-    MapEntry(
+    Tuple2(
       '{"type":3, "invocationId": "abc", "result": null, "headers": {}}${TextMessageFormat.recordSeparator}',
       CompletionMessage(
         'abc',
@@ -165,7 +132,7 @@ void main() {
         result: null,
       ),
     ),
-    MapEntry(
+    Tuple2(
       '{"type":3, "invocationId": "abc", "result": 1514805840000, "headers": {}}${TextMessageFormat.recordSeparator}',
       CompletionMessage(
         'abc',
@@ -173,7 +140,7 @@ void main() {
         result: DateTime.utc(2018, 1, 1, 11, 24, 0).millisecondsSinceEpoch,
       ),
     ),
-    MapEntry(
+    Tuple2(
       '{"type":3, "invocationId": "abc", "result": null, "headers": {}, "extraParameter":"value"}${TextMessageFormat.recordSeparator}',
       CompletionMessage(
         'abc',
@@ -181,28 +148,23 @@ void main() {
         result: null,
       ),
     ),
-  ].forEach((entry) {
-    test('# Can read Completion message', () async {
-      final payload = entry.key;
-      final invocation = entry.value;
+  ].forEach((element) {
+    test('# can read Completion message', () async {
       await VerifyLogger.runAsync((logger) async {
-        final messages = JSONHubProtocol().parseMessages(payload, logger);
+        final messages = JsonHubProtocol().parseMessages(element.item1, logger);
         expect(messages.length, 1);
         expect(
           messages[0],
           isA<CompletionMessage>(),
         );
         final message = messages[0] as CompletionMessage;
-        expect(message.invocationId, invocation.invocationId);
-        expect(message.headers, invocation.headers);
-        expect(message.error, invocation.error);
-        expect(message.result, invocation.result);
+        matchCompletionMessage(message, element.item2);
       });
     });
   });
 
   [
-    MapEntry(
+    Tuple2(
       '{"type":2, "invocationId": "abc", "headers": {}, "item": 8}${TextMessageFormat.recordSeparator}',
       StreamItemMessage(
         'abc',
@@ -210,7 +172,7 @@ void main() {
         item: 8,
       ),
     ),
-    MapEntry(
+    Tuple2(
       '{"type":2, "invocationId": "abc", "headers": {}, "item": 1514805840000}${TextMessageFormat.recordSeparator}',
       StreamItemMessage(
         'abc',
@@ -218,27 +180,23 @@ void main() {
         item: DateTime.utc(2018, 1, 1, 11, 24, 0).millisecondsSinceEpoch,
       ),
     ),
-  ].forEach((entry) {
-    test('# Can read StreamItem message', () async {
-      final payload = entry.key;
-      final invocation = entry.value;
+  ].forEach((element) {
+    test('# can read StreamItem message', () async {
       await VerifyLogger.runAsync((logger) async {
-        final messages = JSONHubProtocol().parseMessages(payload, logger);
+        final messages = JsonHubProtocol().parseMessages(element.item1, logger);
         expect(messages.length, 1);
         expect(
           messages[0],
           isA<StreamItemMessage>(),
         );
         final message = messages[0] as StreamItemMessage;
-        expect(message.invocationId, invocation.invocationId);
-        expect(message.headers, invocation.headers);
-        expect(message.item, invocation.item);
+        matchStreamItemMessage(message, element.item2);
       });
     });
   });
 
   [
-    MapEntry(
+    Tuple2(
       '{"type":2, "invocationId": "abc", "headers": {"t": "u"}, "item": 8}${TextMessageFormat.recordSeparator}',
       StreamItemMessage(
         'abc',
@@ -248,21 +206,17 @@ void main() {
         item: 8,
       ),
     ),
-  ].forEach((entry) {
-    test('# Can read message with headers', () async {
-      final payload = entry.key;
-      final invocation = entry.value;
+  ].forEach((element) {
+    test('# can read message with headers', () async {
       await VerifyLogger.runAsync((logger) async {
-        final messages = JSONHubProtocol().parseMessages(payload, logger);
+        final messages = JsonHubProtocol().parseMessages(element.item1, logger);
         expect(messages.length, 1);
         expect(
           messages[0],
           isA<StreamItemMessage>(),
         );
         final message = messages[0] as StreamItemMessage;
-        expect(message.invocationId, invocation.invocationId);
-        expect(message.headers, invocation.headers);
-        expect(message.item, invocation.item);
+        matchStreamItemMessage(message, element.item2);
       });
     });
   });
@@ -271,71 +225,69 @@ void main() {
     [
       'message with empty payload',
       '{}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload.'
+      'Invalid payload.'
     ],
     [
       'Invocation message with invalid invocation id',
       '{"type":1,"invocationId":1,"target":"method"}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Invocation message.'
+      'Invalid payload for Invocation message.'
     ],
     [
       'Invocation message with empty string invocation id',
       '{"type":1,"invocationId":"","target":"method"}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Invocation message.'
+      'Invalid payload for Invocation message.'
     ],
     [
       'Invocation message with invalid target',
       '{"type":1,"invocationId":"1","target":1}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Invocation message.'
+      'Invalid payload for Invocation message.'
     ],
     [
       'StreamItem message with missing invocation id',
       '{"type":2}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for StreamItem message.'
+      'Invalid payload for StreamItem message.'
     ],
     [
       'StreamItem message with invalid invocation id',
       '{"type":2,"invocationId":1}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for StreamItem message.'
+      'Invalid payload for StreamItem message.'
     ],
     [
       'Completion message with missing invocation id',
       '{"type":3}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Completion message.'
+      'Invalid payload for Completion message.'
     ],
     [
       'Completion message with invalid invocation id',
       '{"type":3,"invocationId":1}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Completion message.'
+      'Invalid payload for Completion message.'
     ],
     [
       'Completion message with result and error',
       '{"type":3,"invocationId":"1","result":2,"error":"error"}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Completion message.'
+      'Invalid payload for Completion message.'
     ],
     [
       'Completion message with non-string error',
       '{"type":3,"invocationId":"1","error":21}${TextMessageFormat.recordSeparator}',
-      'Exception: Invalid payload for Completion message.'
+      'Invalid payload for Completion message.'
     ],
   ].forEach((element) {
-    final name = element[0];
-    final payload = element[1];
-    final expectedError = element[2];
-    test('# Throws for $name', () async {
+    test('# throws for ${element[0]}', () async {
       await VerifyLogger.runAsync((logger) async {
-        final m = predicate((e) => '$e' == expectedError);
+        final m = predicate((e) => '$e' == 'Exception: ${element[2]}');
         final matcher = throwsA(m);
-        expect(() => JSONHubProtocol().parseMessages(payload, logger), matcher);
+        final protocol = JsonHubProtocol();
+        expect(() => protocol.parseMessages(element[1], logger), matcher);
       });
     });
   });
 
-  test('# Can read multiple messages', () async {
+  test('# can read multiple messages', () async {
     await VerifyLogger.runAsync((logger) async {
-      final payload =
+      final data =
           '{"type":2, "invocationId": "abc", "headers": {}, "item": 8}${TextMessageFormat.recordSeparator}{"type":3, "invocationId": "abc", "headers": {}, "result": "OK"}${TextMessageFormat.recordSeparator}';
-      final messages = JSONHubProtocol().parseMessages(payload, logger);
+      final messages = JsonHubProtocol().parseMessages(data, logger);
       expect(messages.length, 2);
       expect(
         messages[0],
@@ -345,21 +297,18 @@ void main() {
         messages[1],
         isA<CompletionMessage>(),
       );
-      final message1 = messages[0] as StreamItemMessage;
-      final message2 = messages[1] as CompletionMessage;
-      expect(message1.invocationId, 'abc');
-      expect(message1.headers, isEmpty);
-      expect(message1.item, 8);
-      expect(message2.invocationId, 'abc');
-      expect(message2.headers, isEmpty);
-      expect(message2.error, isNull);
-      expect(message2.result, 'OK');
+      final message0 = messages[0] as StreamItemMessage;
+      final message1 = messages[1] as CompletionMessage;
+      final matcher0 = StreamItemMessage('abc', headers: {}, item: 8);
+      final matcher1 = CompletionMessage('abc', headers: {}, result: 'OK');
+      matchStreamItemMessage(message0, matcher0);
+      matchCompletionMessage(message1, matcher1);
     });
   });
-  test('# Can read ping message', () async {
+  test('# can read ping message', () async {
     await VerifyLogger.runAsync((logger) async {
-      final payload = '{"type":6}${TextMessageFormat.recordSeparator}';
-      final messages = JSONHubProtocol().parseMessages(payload, logger);
+      final data = '{"type":6}${TextMessageFormat.recordSeparator}';
+      final messages = JsonHubProtocol().parseMessages(data, logger);
       expect(messages.length, 1);
       expect(
         messages[0],
@@ -367,4 +316,28 @@ void main() {
       );
     });
   });
+}
+
+void matchInvocationMessage(
+    InvocationMessage actual, InvocationMessage matcher) {
+  expect(actual.target, matcher.target);
+  expect(actual.arguments, matcher.arguments);
+  expect(actual.headers, matcher.headers);
+  expect(actual.invocationId, matcher.invocationId);
+  expect(actual.streamIds, matcher.streamIds);
+}
+
+void matchCompletionMessage(
+    CompletionMessage actual, CompletionMessage matcher) {
+  expect(actual.invocationId, matcher.invocationId);
+  expect(actual.headers, matcher.headers);
+  expect(actual.error, matcher.error);
+  expect(actual.result, matcher.result);
+}
+
+void matchStreamItemMessage(
+    StreamItemMessage actual, StreamItemMessage matcher) {
+  expect(actual.invocationId, matcher.invocationId);
+  expect(actual.headers, matcher.headers);
+  expect(actual.item, matcher.item);
 }

@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'dart:html' as chromium;
 import 'dart:typed_data';
 
 import 'web_socket.dart';
@@ -8,7 +8,7 @@ WebSocket connectWebSocket(String url,
     _WebSocket.connect(url, protocols);
 
 class _WebSocket implements WebSocket {
-  final html.WebSocket _inner;
+  final chromium.WebSocket _inner;
 
   @override
   String get url => _inner.url;
@@ -27,7 +27,7 @@ class _WebSocket implements WebSocket {
   @override
   void Function(Exception error) onerror;
   @override
-  void Function(dynamic data) ondata;
+  void Function(Object data) ondata;
   @override
   void Function(int code, String reason) onclose;
 
@@ -44,7 +44,7 @@ class _WebSocket implements WebSocket {
     // The socket API guarantees that only a single error event will be emitted,
     // and that once it is no open or message events will be emitted.
     _inner.onError.first.then((event) {
-      final error = event is html.ErrorEvent
+      final error = event is chromium.ErrorEvent
           ? event.error
           : Exception('WebSocket error event: $event');
       onerror?.call(error);
@@ -61,7 +61,7 @@ class _WebSocket implements WebSocket {
   }
 
   factory _WebSocket.connect(String url, [List<String> protocols]) {
-    final inner = html.WebSocket(url, protocols);
+    final inner = chromium.WebSocket(url, protocols);
     return _WebSocket._(inner);
   }
 

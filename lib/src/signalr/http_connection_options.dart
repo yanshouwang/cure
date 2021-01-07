@@ -3,11 +3,11 @@ import 'package:cure/ws.dart';
 
 import 'http_client.dart';
 
-abstract class HTTPConnectionOptions {
+abstract class HttpConnectionOptions {
   Map<String, String> headers;
-  HTTPClient httpClient;
+  HttpClient httpClient;
   dynamic transport;
-  dynamic logger;
+  Object logger;
   Future<String> Function() accessTokenFactory;
   bool logMessageContent;
   bool skipNegotiation;
@@ -17,11 +17,11 @@ abstract class HTTPConnectionOptions {
       {Map<String, String> headers, bool withCredentials}) eventSource;
   bool withCredentials;
 
-  factory HTTPConnectionOptions(
+  factory HttpConnectionOptions(
           {Map<String, String> headers,
-          HTTPClient httpClient,
+          HttpClient httpClient,
           dynamic transport,
-          dynamic logger,
+          Object logger,
           Future<String> Function() accessTokenFactory,
           bool logMessageContent,
           bool skipNegotiation,
@@ -32,7 +32,7 @@ abstract class HTTPConnectionOptions {
                   {Map<String, String> headers, bool withCredentials})
               eventSource,
           bool withCredentials}) =>
-      _HTTPConnectionOptions(
+      _HttpConnectionOptions(
           headers,
           httpClient,
           transport,
@@ -45,15 +45,15 @@ abstract class HTTPConnectionOptions {
           withCredentials);
 }
 
-class _HTTPConnectionOptions implements HTTPConnectionOptions {
+class _HttpConnectionOptions implements HttpConnectionOptions {
   @override
   Map<String, String> headers;
   @override
-  HTTPClient httpClient;
+  HttpClient httpClient;
   @override
   dynamic transport;
   @override
-  dynamic logger;
+  Object logger;
   @override
   Future<String> Function() accessTokenFactory;
   @override
@@ -69,7 +69,7 @@ class _HTTPConnectionOptions implements HTTPConnectionOptions {
   @override
   bool withCredentials;
 
-  _HTTPConnectionOptions(
+  _HttpConnectionOptions(
       this.headers,
       this.httpClient,
       this.transport,

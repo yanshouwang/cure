@@ -1,5 +1,5 @@
+import 'package:cure/convert.dart';
 import 'package:cure/http.dart';
-import 'package:cure/serialization.dart';
 import 'package:test/test.dart';
 
 import 'utils.dart';
@@ -36,7 +36,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value'],
       };
-      final actual = JSON.fromJSON(response.content);
+      final actual = json.decode(response.content);
       final matcher = {
         'method': 'GET',
         'path': '/',
@@ -68,7 +68,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = JSON.fromJSON(response.content);
+      final actual = json.decode(response.content);
       final matcher = {
         'method': 'POST',
         'path': '/',
@@ -101,7 +101,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = JSON.fromJSON(response.content);
+      final actual = json.decode(response.content);
       final matcher = {
         'method': 'PUT',
         'path': '/',
@@ -134,7 +134,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = JSON.fromJSON(response.content);
+      final actual = json.decode(response.content);
       final matcher = {
         'method': 'PATCH',
         'path': '/',
@@ -164,7 +164,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value'],
       };
-      final actual = JSON.fromJSON(response.content);
+      final actual = json.decode(response.content);
       final matcher = {
         'method': 'DELETE',
         'path': '/',

@@ -1,4 +1,4 @@
-import 'dart:io' as io;
+import 'dart:io' as dartium;
 
 import 'web_socket.dart';
 
@@ -7,7 +7,7 @@ WebSocket connectWebSocket(String url,
     _WebSocket.connect(url, protocols: protocols, headers: headers);
 
 class _WebSocket implements WebSocket {
-  io.WebSocket _inner;
+  dartium.WebSocket _inner;
 
   @override
   final String url;
@@ -24,7 +24,7 @@ class _WebSocket implements WebSocket {
   @override
   void Function(Exception error) onerror;
   @override
-  void Function(dynamic data) ondata;
+  void Function(Object data) ondata;
   @override
   void Function(int code, String reason) onclose;
 
@@ -35,7 +35,7 @@ class _WebSocket implements WebSocket {
 
   void _connect({List<String> protocols, Map<String, String> headers}) async {
     try {
-      _inner = await io.WebSocket.connect(url,
+      _inner = await dartium.WebSocket.connect(url,
           protocols: protocols, headers: headers);
       onopen?.call();
       _listen();
@@ -62,7 +62,7 @@ class _WebSocket implements WebSocket {
   }
 
   @override
-  void send(dynamic data) {
+  void send(Object data) {
     _inner.add(data);
   }
 

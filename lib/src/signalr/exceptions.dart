@@ -1,17 +1,17 @@
 /// Exception thrown when an HTTP request fails.
-class HTTPException implements Exception {
+class HttpException implements Exception {
   /// A descriptive exception message.
   final String message;
 
   /// The HTTP status code represented by this exception.
   final int statusCode;
 
-  /// Constructs a new instance of [HTTPException].
-  HTTPException(this.message, this.statusCode);
+  /// Constructs a new instance of [HttpException].
+  HttpException(this.message, this.statusCode);
 
   @override
   String toString() {
-    return 'HTTPException: $message\nstatusCode: $statusCode';
+    return 'HttpException: $message\nstatusCode: $statusCode';
   }
 }
 

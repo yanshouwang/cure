@@ -11,7 +11,7 @@ import 'utils.dart';
 /// A builder for configuring [HubConnection] instances.
 abstract class HubConnectionBuilder {
   HubProtocol get protocol;
-  HTTPConnectionOptions get httpConnectionOptions;
+  HttpConnectionOptions get httpConnectionOptions;
   String get url;
   Logger get logger;
   RetryPolicy get reconnectPolicy;
@@ -21,7 +21,7 @@ abstract class HubConnectionBuilder {
   /// [logging] A [LogLevel], a string representing a [LogLevel], or an object implementing the [Logger] interface. See [the documentation for client logging configuration](https://docs.microsoft.com/aspnet/core/signalr/configuration#configure-logging) for more details.
   ///
   /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder configureLogging(dynamic logging);
+  HubConnectionBuilder configureLogging(Object logging);
 
   /// Configures the [HubConnection] to use HTTP-based transports to connect to the specified URL.
   ///
@@ -30,7 +30,7 @@ abstract class HubConnectionBuilder {
   /// [transportTypeOrOptions] The specific transport to use or an options object used to configure the connection.
   ///
   /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder withURL(String url, [dynamic transportTypeOrOptions]);
+  HubConnectionBuilder withURL(String url, [Object transportTypeOrOptions]);
 
   /// Configures the [HubConnection] to use the specified Hub Protocol.
   ///
@@ -47,7 +47,7 @@ abstract class HubConnectionBuilder {
   ///
   /// Returns the [HubConnectionBuilder] instance, for chaining.
   HubConnectionBuilder withAutomaticReconnect(
-      [dynamic retryDelaysOrReconnectPolicy]);
+      [Object retryDelaysOrReconnectPolicy]);
 
   /// Creates a [HubConnection] from the configuration options specified in this builder.
   ///
@@ -61,7 +61,7 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
   @override
   HubProtocol protocol;
   @override
-  HTTPConnectionOptions httpConnectionOptions;
+  HttpConnectionOptions httpConnectionOptions;
   @override
   String url;
   @override
@@ -70,7 +70,7 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
   RetryPolicy reconnectPolicy;
 
   @override
-  HubConnectionBuilder configureLogging(dynamic logging) {
+  HubConnectionBuilder configureLogging(Object logging) {
     Arg.isRequired(logging, 'logging');
 
     if (logging is Logger) {
@@ -83,19 +83,19 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
   }
 
   @override
-  HubConnectionBuilder withURL(String url, [dynamic transportTypeOrOptions]) {
+  HubConnectionBuilder withURL(String url, [Object transportTypeOrOptions]) {
     Arg.isRequired(url, 'url');
     Arg.isNotEmpty(url, 'url');
 
     this.url = url;
 
-    // Flow-typing knows where it's at. Since HTTPTransportType is a number and HTTPConnectionOptions is guaranteed
+    // Flow-typing knows where it's at. Since HttpTransportType is a number and HttpConnectionOptions is guaranteed
     // to be an object, we know (as does TypeScript) this comparison is all we need to figure out which overload was called.
-    if (transportTypeOrOptions is HTTPConnectionOptions) {
+    if (transportTypeOrOptions is HttpConnectionOptions) {
       httpConnectionOptions = transportTypeOrOptions;
     } else {
       httpConnectionOptions ??=
-          HTTPConnectionOptions(transport: transportTypeOrOptions);
+          HttpConnectionOptions(transport: transportTypeOrOptions);
     }
 
     return this;
@@ -111,7 +111,7 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
 
   @override
   HubConnectionBuilder withAutomaticReconnect(
-      [dynamic retryDelaysOrReconnectPolicy]) {
+      [Object retryDelaysOrReconnectPolicy]) {
     if (reconnectPolicy != null) {
       throw Exception('A reconnectPolicy has already been set.');
     }
@@ -129,13 +129,13 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
 
   @override
   HubConnection build() {
-    // If HTTPConnectionOptions has a logger, use it. Otherwise, override it with the one
+    // If HttpConnectionOptions has a logger, use it. Otherwise, override it with the one
     // provided to configureLogger
     final httpConnectionOptions =
-        this.httpConnectionOptions ?? HTTPConnectionOptions();
+        this.httpConnectionOptions ?? HttpConnectionOptions();
 
     // If it's 'null', the user **explicitly** asked for null, don't mess with it.
-    // If our logger is undefined or null, that's OK, the HTTPConnection constructor will handle it.
+    // If our logger is undefined or null, that's OK, the HttpConnection constructor will handle it.
     httpConnectionOptions.logger ??= logger;
 
     // Now create the connection
@@ -143,9 +143,9 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
       throw Exception(
           "The 'HubConnectionBuilder.withUrl' method must be called before building the connection.");
     }
-    final connection = HTTPConnection(url, httpConnectionOptions);
+    final connection = HttpConnection(url, httpConnectionOptions);
 
     return HubConnection.create(connection, logger ?? NullLogger(),
-        protocol ?? JSONHubProtocol(), reconnectPolicy);
+        protocol ?? JsonHubProtocol(), reconnectPolicy);
   }
 }

@@ -9,7 +9,7 @@ String get userAgent => 'User-Agent';
 bool get isWeb => false;
 bool get isVM => true;
 
-void error(dynamic message) => print(message);
-void warn(dynamic message) => print(message);
-void info(dynamic message) => print(message);
-void log(dynamic message) => print(message);
+void error(Object message) => print(message);
+void warn(Object message) => print(message);
+void info(Object message) => print(message);
+void log(Object message) => print(message);

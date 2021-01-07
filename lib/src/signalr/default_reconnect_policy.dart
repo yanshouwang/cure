@@ -1,4 +1,4 @@
-import 'package:cure/utils.dart';
+import 'package:cure/core.dart';
 
 import 'retry_policy.dart';
 

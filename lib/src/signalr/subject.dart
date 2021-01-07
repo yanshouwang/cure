@@ -14,7 +14,7 @@ class Subject<T> implements StreamResult<T> {
     }
   }
 
-  void error(dynamic err) {
+  void error(Object err) {
     for (var observer in observers) {
       observer.error(err);
     }

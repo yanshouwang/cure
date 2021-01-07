@@ -6,14 +6,15 @@ import 'package:cure/sse.dart';
 import 'package:cure/ws.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
+import 'package:tuple/tuple.dart';
 
 import 'common.dart';
 import 'test_http_client.dart';
 import 'test_web_socket.dart';
 import 'utils.dart';
 
-HTTPConnectionOptions get commonOptions =>
-    HTTPConnectionOptions(logger: NullLogger());
+HttpConnectionOptions get commonOptions =>
+    HttpConnectionOptions(logger: NullLogger());
 
 const DEFAULT_CONNECTION_ID = 'abc123';
 const DEFAULT_CONNECTION_TOKEN = '123abc';
@@ -21,15 +22,15 @@ const DEFAULT_CONNECTION_TOKEN = '123abc';
 NegotiateResponse get DEFAULT_NEGOTIATE_RESPONSE => NegotiateResponse(
       availableTransports: [
         AvailableTransport(
-          HTTPTransportType.webSockets,
+          HttpTransportType.webSockets,
           [TransferFormat.text, TransferFormat.binary],
         ),
         AvailableTransport(
-          HTTPTransportType.serverSentEvents,
+          HttpTransportType.serverSentEvents,
           [TransferFormat.text],
         ),
         AvailableTransport(
-          HTTPTransportType.longPolling,
+          HttpTransportType.longPolling,
           [TransferFormat.text, TransferFormat.binary],
         ),
       ],
@@ -39,31 +40,31 @@ NegotiateResponse get DEFAULT_NEGOTIATE_RESPONSE => NegotiateResponse(
     );
 
 void main() {
-  group('# HTTPConnection', () {
+  group('# HttpConnection', () {
     test(
-        '# Cannot be created with relative url if document object is not present',
+        '# cannot be created with relative url if document object is not present',
         () {
       final m = predicate((e) => '$e' == "Exception: Cannot resolve '/test'.");
       final matcher = throwsA(m);
-      expect(() => HTTPConnection('/test', commonOptions), matcher);
+      expect(() => HttpConnection('/test', commonOptions), matcher);
     });
     test(
-        '# Cannot be created with relative url if window object is not present',
+        '# cannot be created with relative url if window object is not present',
         () {
       final m = predicate((e) => '$e' == "Exception: Cannot resolve '/test'.");
       final matcher = throwsA(m);
-      expect(() => HTTPConnection('/test', commonOptions), matcher);
+      expect(() => HttpConnection('/test', commonOptions), matcher);
     });
-    test('# Starting connection fails if getting id fails', () async {
+    test('# starting connection fails if getting id fails', () async {
       await VerifyLogger.runAsync((logger) async {
         final error = Exception('error');
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => Future.error(error), 'POST')
                 .on((r, next) => '', 'GET'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
 
         await expectLater(
             connection.startAsync(TransferFormat.text), throwsA(error));
@@ -72,22 +73,22 @@ void main() {
         'Failed to complete negotiation with the server: Exception: error'
       ]);
     });
-    test('# Cannot start a running connection', () async {
+    test('# cannot start a running connection', () async {
       await VerifyLogger.runAsync((logger) async {
         final transport = FakeTransport1();
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => DEFAULT_NEGOTIATE_RESPONSE, 'POST'),
             logger: logger,
             transport: transport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           await connection.startAsync(TransferFormat.text);
 
           final m = predicate((e) =>
               '$e' ==
-              "Exception: Cannot start an HTTPConnection that is not in the 'disconnected' state.");
+              "Exception: Cannot start an HttpConnection that is not in the 'disconnected' state.");
           final matcher = throwsA(m);
           await expectLater(
               connection.startAsync(TransferFormat.text), matcher);
@@ -97,16 +98,16 @@ void main() {
         }
       });
     });
-    test('# Can start a stopped connection', () async {
+    test('# can start a stopped connection', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on((r, next) {
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on((r, next) {
               final error = Exception('reached negotiate.');
               return Future.error(error);
             }, 'POST').on((r, next) => '', 'GET'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
 
         final m = predicate((e) => '$e' == 'Exception: reached negotiate.');
         final matcher = throwsA(m);
@@ -116,12 +117,12 @@ void main() {
         'Failed to start the connection: Exception: reached negotiate.'
       ]);
     });
-    test('# Can stop a starting connection', () async {
+    test('# can stop a starting connection', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(logger: logger);
-        final httpClient = TestHTTPClient();
+        final options = HttpConnectionOptions(logger: logger);
+        final httpClient = TestHttpClient();
         options.httpClient = httpClient;
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         httpClient.on((r, next) async {
           await connection.stopAsync();
           return '{}';
@@ -139,9 +140,9 @@ void main() {
         'Failed to start the connection: Exception: The connection was stopped during negotiation.'
       ]);
     });
-    test('# Cannot send with an un-started connection', () async {
+    test('# cannot send with an un-started connection', () async {
       await VerifyLogger.runAsync((logger) async {
-        final connection = HTTPConnection('http://tempuri.org');
+        final connection = HttpConnection('http://tempuri.org');
 
         final m = predicate((e) =>
             '$e' ==
@@ -150,9 +151,9 @@ void main() {
         await expectLater(connection.sendAsync('YAO MING'), matcher);
       });
     });
-    test("# Sending before start doesn't throw synchronously", () async {
+    test("# sending before start doesn't throw synchronously", () async {
       await VerifyLogger.runAsync((logger) async {
-        final connection = HTTPConnection('http://tempuri.org');
+        final connection = HttpConnection('http://tempuri.org');
 
         try {
           await connection.sendAsync('test').catchError((e) => {});
@@ -161,15 +162,15 @@ void main() {
         }
       });
     });
-    test('# Cannot be started if negotiate returns non 200 response', () async {
+    test('# cannot be started if negotiate returns non 200 response', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
-                .on((r, next) => HTTPResponse(999), 'POST')
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
+                .on((r, next) => HttpResponse(999), 'POST')
                 .on((r, next) => '', 'GET'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) =>
             '$e' ==
             "Exception: Unexpected status code returned from negotiate '999'");
@@ -179,23 +180,23 @@ void main() {
         "Failed to start the connection: Exception: Unexpected status code returned from negotiate '999'"
       ]);
     });
-    test('# All transport failure errors get aggregated', () async {
+    test('# all transport failure errors get aggregated', () async {
       await VerifyLogger.runAsync((loggerImpl) async {
         var negotiateCount = 0;
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             webSocket: (url, {protocols, headers}) =>
                 throw Exception('There was an error with the transport.'),
-            httpClient: TestHTTPClient()
+            httpClient: TestHttpClient()
                 .on((r, next) {
                   negotiateCount++;
                   return DEFAULT_NEGOTIATE_RESPONSE;
                 }, 'POST')
-                .on((r, next) => HTTPResponse(200), 'GET')
-                .on((r, next) => HTTPResponse(202), 'DELETE'),
+                .on((r, next) => HttpResponse(200), 'GET')
+                .on((r, next) => HttpResponse(202), 'DELETE'),
             logger: loggerImpl,
-            transport: HTTPTransportType.webSockets);
+            transport: HttpTransportType.webSockets);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) =>
             '$e' ==
             "Exception: Unable to connect to the server with any of the available transports. WebSockets failed: Exception: There was an error with the transport. ServerSentEvents failed: Exception: 'ServerSentEvents' is disabled by the client. LongPolling failed: Exception: 'LongPolling' is disabled by the client.");
@@ -209,27 +210,27 @@ void main() {
       ]);
     });
     test(
-        '# Negotiate called again when transport fails to start and falls back',
+        '# negotiate called again when transport fails to start and falls back',
         () async {
       await VerifyLogger.runAsync((loggerImpl) async {
         var negotiateCount = 0;
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             eventSource: (_, {headers, withCredentials}) =>
                 throw Exception("Don't allow ServerSentEvents."),
             webSocket: (_, {protocols, headers}) =>
                 throw Exception("Don't allow Websockets."),
-            httpClient: TestHTTPClient()
+            httpClient: TestHttpClient()
                 .on((r, next) {
                   negotiateCount++;
                   return DEFAULT_NEGOTIATE_RESPONSE;
                 }, 'POST')
-                .on((r, next) => HTTPResponse(200), 'GET')
-                .on((r, next) => HTTPResponse(202), 'DELETE'),
+                .on((r, next) => HttpResponse(200), 'GET')
+                .on((r, next) => HttpResponse(202), 'DELETE'),
             logger: loggerImpl,
-            transport: HTTPTransportType.webSockets.value |
-                HTTPTransportType.serverSentEvents.value);
+            transport: HttpTransportType.webSockets.value |
+                HttpTransportType.serverSentEvents.value);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) =>
             '$e' ==
             "Exception: Unable to connect to the server with any of the available transports. WebSockets failed: Exception: Don't allow Websockets. ServerSentEvents failed: Exception: Don't allow ServerSentEvents. LongPolling failed: Exception: 'LongPolling' is disabled by the client.");
@@ -243,15 +244,15 @@ void main() {
         "Failed to start the connection: Exception: Unable to connect to the server with any of the available transports. WebSockets failed: Exception: Don't allow Websockets. ServerSentEvents failed: Exception: Don't allow ServerSentEvents. LongPolling failed: Exception: 'LongPolling' is disabled by the client."
       ]);
     });
-    test('# Failed re-negotiate fails start', () async {
+    test('# failed re-negotiate fails start', () async {
       await VerifyLogger.runAsync((logger) async {
         var negotiateCount = 0;
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             eventSource: (_, {headers, withCredentials}) =>
                 throw Exception("Don't allow ServerSentEvents."),
             webSocket: (_, {protocols, headers}) =>
                 throw Exception("Don't allow Websockets."),
-            httpClient: TestHTTPClient()
+            httpClient: TestHttpClient()
                 .on((r, next) {
                   negotiateCount++;
                   if (negotiateCount == 2) {
@@ -259,11 +260,11 @@ void main() {
                   }
                   return DEFAULT_NEGOTIATE_RESPONSE;
                 }, 'POST')
-                .on((r, next) => HTTPResponse(200), 'GET')
-                .on((r, next) => HTTPResponse(202), 'DELETE'),
+                .on((r, next) => HttpResponse(200), 'GET')
+                .on((r, next) => HttpResponse(202), 'DELETE'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) => '$e' == 'Exception: negotiate failed');
         final matcher = throwsA(m);
         await expectLater(connection.startAsync(TransferFormat.text), matcher);
@@ -275,23 +276,23 @@ void main() {
         'Failed to start the connection: Exception: negotiate failed'
       ]);
     });
-    test('# Can stop a non-started connection', () async {
+    test('# can stop a non-started connection', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(logger: logger);
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final options = HttpConnectionOptions(logger: logger);
+        final connection = HttpConnection('http://tempuri.org', options);
         await connection.stopAsync();
       });
     });
-    test('# Start throws after all transports fail', () async {
+    test('# start throws after all transports fail', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => NegotiateResponse(connectionId: '42'), 'POST')
                 .on((r, next) => throw Exception('fail'), 'GET'),
             logger: logger);
 
         final connection =
-            HTTPConnection('http://tempuri.org?q=myData', options);
+            HttpConnection('http://tempuri.org?q=myData', options);
         final m = predicate((e) =>
             '$e' ==
             'Exception: None of the transports supported by the client are supported by the server.');
@@ -301,19 +302,19 @@ void main() {
         'Failed to start the connection: Exception: None of the transports supported by the client are supported by the server.'
       ]);
     });
-    test("# Preserves user's query string", () async {
+    test("# preserves user's query string", () async {
       await VerifyLogger.runAsync((logger) async {
         final transport = FakeTransport2();
 
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => '{ \"connectionId\": \"42\" }', 'POST')
                 .on((r, next) => '', 'GET'),
             logger: logger,
             transport: transport);
 
         final connection =
-            HTTPConnection('http://tempuri.org?q=myData', options);
+            HttpConnection('http://tempuri.org?q=myData', options);
         try {
           final startFuture = connection.startAsync(TransferFormat.text);
 
@@ -330,22 +331,22 @@ void main() {
 
     eachEndpoint((given, expected) {
       test(
-          "# Negotiate request for '$given' puts 'negotiate' at the end of the path",
+          "# negotiate request for '$given' puts 'negotiate' at the end of the path",
           () async {
         await VerifyLogger.runAsync((logger) async {
           final negotiate = Completer<String>();
-          final options = HTTPConnectionOptions(
-              httpClient: TestHTTPClient()
+          final options = HttpConnectionOptions(
+              httpClient: TestHttpClient()
                   .on((r, next) {
                     negotiate.complete(r.url);
-                    throw HTTPException(
+                    throw HttpException(
                         "We don't care how this turns out", 500);
                   }, 'POST')
-                  .on((r, next) => HTTPResponse(204), 'GET')
-                  .on((r, next) => HTTPResponse(202), 'DELETE'),
+                  .on((r, next) => HttpResponse(204), 'GET')
+                  .on((r, next) => HttpResponse(202), 'DELETE'),
               logger: logger);
 
-          final connection = HTTPConnection(given, options);
+          final connection = HttpConnection(given, options);
           try {
             final startFuture = connection.startAsync(TransferFormat.text);
 
@@ -354,22 +355,22 @@ void main() {
 
             final m = predicate((e) =>
                 '$e' ==
-                "HTTPException: We don't care how this turns out\nstatusCode: 500");
+                "HttpException: We don't care how this turns out\nstatusCode: 500");
             final matcher2 = throwsA(m);
             await expectLater(startFuture, matcher2);
           } finally {
             await connection.stopAsync();
           }
         }, [
-          "Failed to complete negotiation with the server: HTTPException: We don't care how this turns out\nstatusCode: 500",
-          "Failed to start the connection: HTTPException: We don't care how this turns out\nstatusCode: 500"
+          "Failed to complete negotiation with the server: HttpException: We don't care how this turns out\nstatusCode: 500",
+          "Failed to start the connection: HttpException: We don't care how this turns out\nstatusCode: 500"
         ]);
       });
     });
 
     eachTransport((transport) {
       test(
-          '# Cannot be started if requested $transport transport not available on server',
+          '# cannot be started if requested $transport transport not available on server',
           () async {
         await VerifyLogger.runAsync((logger) async {
           // Clone the default response
@@ -379,14 +380,14 @@ void main() {
           negotiateResponse.availableTransports
               .removeWhere((e) => e.transport == transport);
 
-          final options = HTTPConnectionOptions(
-              httpClient: TestHTTPClient()
+          final options = HttpConnectionOptions(
+              httpClient: TestHttpClient()
                   .on((r, next) => negotiateResponse, 'POST')
-                  .on((r, next) => HTTPResponse(204), 'GET'),
+                  .on((r, next) => HttpResponse(204), 'GET'),
               logger: logger,
               transport: transport);
 
-          final connection = HTTPConnection('http://tempuri.org', options);
+          final connection = HttpConnection('http://tempuri.org', options);
 
           final m = predicate((e) =>
               '$e' ==
@@ -401,23 +402,24 @@ void main() {
       });
     });
 
-    for (var entry in [MapEntry('null', null), MapEntry('0', 0)]) {
-      test('# Can be started when transport mask is ${entry.key}', () async {
+    [Tuple2('null', null), Tuple2('0', 0)].forEach((element) {
+      test('# can be started when transport mask is ${element.item1}',
+          () async {
         FakeWebSocket1.wsSet = Completer();
         final ws = (url, {protocols, headers}) => FakeWebSocket1();
 
         await VerifyLogger.runAsync((logger) async {
-          final options = HTTPConnectionOptions(
+          final options = HttpConnectionOptions(
             webSocket: ws,
-            httpClient: TestHTTPClient()
+            httpClient: TestHttpClient()
                 .on((r, next) => DEFAULT_NEGOTIATE_RESPONSE, 'POST')
-                .on((r, next) => HTTPResponse(200), 'GET')
-                .on((r, next) => HTTPResponse(202), 'DELETE'),
+                .on((r, next) => HttpResponse(200), 'GET')
+                .on((r, next) => HttpResponse(202), 'DELETE'),
             logger: logger,
-            transport: entry.value,
+            transport: element.item2,
           );
 
-          final connection = HTTPConnection('http://tempuri.org', options);
+          final connection = HttpConnection('http://tempuri.org', options);
 
           final startFuture = connection.startAsync(TransferFormat.text);
           await FakeWebSocket1.wsSet.future;
@@ -428,19 +430,19 @@ void main() {
           await connection.stopAsync();
         });
       });
-    }
+    });
 
     test(
-        '# Cannot be started if no transport available on server and no transport requested',
+        '# cannot be started if no transport available on server and no transport requested',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => NegotiateResponse(connectionId: '42'), 'POST')
                 .on((r, next) => '', 'GET'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) =>
             '$e' ==
             'Exception: None of the transports supported by the client are supported by the server.');
@@ -451,21 +453,21 @@ void main() {
       ]);
     });
     test(
-        '# Does not send negotiate request if WebSockets transport requested explicitly and skipNegotiation is true',
+        '# does not send negotiate request if WebSockets transport requested explicitly and skipNegotiation is true',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
           webSocket: (url, {protocols, headers}) =>
               throw Exception('WebSocket constructor called.'),
-          httpClient: TestHTTPClient()
+          httpClient: TestHttpClient()
               .on((r, next) => throw Exception('Should not be called'), 'POST')
               .on((r, next) => throw Exception('Should not be called'), 'GET'),
           logger: logger,
           skipNegotiation: true,
-          transport: HTTPTransportType.webSockets,
+          transport: HttpTransportType.webSockets,
         );
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate(
             (e) => '$e' == 'Exception: WebSocket constructor called.');
         final matcher = throwsA(m);
@@ -475,16 +477,16 @@ void main() {
       ]);
     });
     test(
-        '# Does not start non WebSockets transport if requested explicitly and skipNegotiation is true',
+        '# does not start non WebSockets transport if requested explicitly and skipNegotiation is true',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient(),
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient(),
             logger: logger,
             skipNegotiation: true,
-            transport: HTTPTransportType.longPolling);
+            transport: HttpTransportType.longPolling);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) =>
             '$e' ==
             'Exception: Negotiation can only be skipped when using the WebSocket transport directly.');
@@ -494,14 +496,14 @@ void main() {
         'Failed to start the connection: Exception: Negotiation can only be skipped when using the WebSocket transport directly.'
       ]);
     });
-    test('# Redirects to url when negotiate returns it', () async {
+    test('# redirects to url when negotiate returns it', () async {
       await VerifyLogger.runAsync((logger) async {
         // HACK: Looks like we shoud wait until Client received the last request.
         final completer = Completer();
 
         var firstNegotiate = true;
         var firstPoll = true;
-        final httpClient = TestHTTPClient().on(
+        final httpClient = TestHttpClient().on(
           (r, next) {
             if (firstNegotiate) {
               firstNegotiate = false;
@@ -510,7 +512,7 @@ void main() {
             return NegotiateResponse(
               availableTransports: [
                 AvailableTransport(
-                  HTTPTransportType.longPolling,
+                  HttpTransportType.longPolling,
                   [TransferFormat.text],
                 )
               ],
@@ -524,16 +526,16 @@ void main() {
             firstPoll = false;
             return '';
           }
-          return HTTPResponse(204, 'No Content', '');
-        }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE');
+          return HttpResponse(204, 'No Content', '');
+        }, 'GET').on((r, next) => HttpResponse(202), 'DELETE');
 
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
           httpClient: httpClient,
           logger: logger,
-          transport: HTTPTransportType.longPolling,
+          transport: HttpTransportType.longPolling,
         );
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onclose = (error) => completer.complete();
         try {
           await connection.startAsync(TransferFormat.text);
@@ -553,22 +555,22 @@ void main() {
         }
       });
     });
-    test('# Fails to start if negotiate redirects more than 100 times',
+    test('# fails to start if negotiate redirects more than 100 times',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        final httpClient = TestHTTPClient().on(
+        final httpClient = TestHttpClient().on(
           (r, next) =>
               NegotiateResponse(url: 'https://another.domain.url/chat'),
           'POST',
           RegExp('/negotiate'),
         );
 
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             httpClient: httpClient,
             logger: logger,
-            transport: HTTPTransportType.longPolling);
+            transport: HttpTransportType.longPolling);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate(
             (e) => '$e' == 'Exception: Negotiate redirection limit exceeded.');
         final matcher = throwsA(m);
@@ -577,7 +579,7 @@ void main() {
         'Failed to start the connection: Exception: Negotiate redirection limit exceeded.'
       ]);
     });
-    test('# Redirects to url when negotiate returns it with access token',
+    test('# redirects to url when negotiate returns it with access token',
         () async {
       await VerifyLogger.runAsync((logger) async {
         // HACK: Looks like we shoud wait until Client received the last request.
@@ -585,13 +587,13 @@ void main() {
 
         var firstNegotiate = true;
         var firstPoll = true;
-        final httpClient = TestHTTPClient().on((r, next) {
+        final httpClient = TestHttpClient().on((r, next) {
           if (firstNegotiate) {
             firstNegotiate = false;
 
             if (r.headers != null &&
                 r.headers['Authorization'] != 'Bearer firstSecret') {
-              return HTTPResponse(401, 'Unauthorized', '');
+              return HttpResponse(401, 'Unauthorized', '');
             }
 
             return NegotiateResponse(
@@ -602,13 +604,13 @@ void main() {
 
           if (r.headers != null &&
               r.headers['Authorization'] != 'Bearer secondSecret') {
-            return HTTPResponse(401, 'Unauthorized', '');
+            return HttpResponse(401, 'Unauthorized', '');
           }
 
           return NegotiateResponse(
             availableTransports: [
               AvailableTransport(
-                HTTPTransportType.longPolling,
+                HttpTransportType.longPolling,
                 [TransferFormat.text],
               )
             ],
@@ -617,24 +619,24 @@ void main() {
         }, 'POST', RegExp('/negotiate')).on((r, next) {
           if (r.headers != null &&
               r.headers['Authorization'] != 'Bearer secondSecret') {
-            return HTTPResponse(401, 'Unauthorized', '');
+            return HttpResponse(401, 'Unauthorized', '');
           }
 
           if (firstPoll) {
             firstPoll = false;
             return '';
           }
-          return HTTPResponse(204, 'No Content', '');
-        }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE');
+          return HttpResponse(204, 'No Content', '');
+        }, 'GET').on((r, next) => HttpResponse(202), 'DELETE');
 
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
           accessTokenFactory: () => Future.value('firstSecret'),
           httpClient: httpClient,
           logger: logger,
-          transport: HTTPTransportType.longPolling,
+          transport: HttpTransportType.longPolling,
         );
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onclose = (e) => completer.complete();
         try {
           await connection.startAsync(TransferFormat.text);
@@ -654,31 +656,31 @@ void main() {
         }
       });
     });
-    test('# Throws error if negotiate response has error', () async {
+    test('# throws error if negotiate response has error', () async {
       await VerifyLogger.runAsync((logger) async {
-        final httpClient = TestHTTPClient().on(
+        final httpClient = TestHttpClient().on(
           (r, next) => NegotiateResponse(error: 'Negotiate error.'),
           'POST',
           RegExp('/negotiate'),
         );
 
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             httpClient: httpClient,
             logger: logger,
-            transport: HTTPTransportType.longPolling);
+            transport: HttpTransportType.longPolling);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final m = predicate((e) => '$e' == 'Exception: Negotiate error.');
         final matcher = throwsA(m);
         await expectLater(connection.startAsync(TransferFormat.text), matcher);
       }, ['Failed to start the connection: Exception: Negotiate error.']);
     });
     test(
-        '# Authorization header removed when token factory returns null and using LongPolling',
+        '# authorization header removed when token factory returns null and using LongPolling',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.longPolling,
+          HttpTransportType.longPolling,
           [TransferFormat.text],
         );
 
@@ -687,7 +689,7 @@ void main() {
 
         var httpClientGetCount = 0;
         var accessTokenFactoryCount = 0;
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
           accessTokenFactory: () {
             accessTokenFactoryCount++;
             if (accessTokenFactoryCount == 1) {
@@ -697,7 +699,7 @@ void main() {
               return Future.value(null);
             }
           },
-          httpClient: TestHTTPClient()
+          httpClient: TestHttpClient()
               .on(
                   (r, next) => NegotiateResponse(
                         connectionId: '42',
@@ -722,11 +724,11 @@ void main() {
               }
               completer.complete();
             }
-          }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE'),
+          }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
           logger: logger,
         );
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           await connection.startAsync(TransferFormat.text);
           await completer.future;
@@ -739,16 +741,16 @@ void main() {
         }
       });
     });
-    test('# Sets inherentKeepAlive feature when using LongPolling', () async {
+    test('# sets inherentKeepAlive feature when using LongPolling', () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.longPolling,
+          HttpTransportType.longPolling,
           [TransferFormat.text],
         );
 
         var httpClientGetCount = 0;
-        final options = HTTPConnectionOptions(
-          httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+          httpClient: TestHttpClient()
               .on(
                   (r, next) => NegotiateResponse(
                         connectionId: '42',
@@ -761,11 +763,11 @@ void main() {
               // First long polling request must succeed so start completes
               return '';
             }
-          }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE'),
+          }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
           logger: logger,
         );
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           await connection.startAsync(TransferFormat.text);
           expect(connection.features['inherentKeepAlive'], true);
@@ -774,20 +776,20 @@ void main() {
         }
       });
     });
-    test('# Transport handlers set before start', () async {
+    test('# transport handlers set before start', () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.longPolling,
+          HttpTransportType.longPolling,
           [TransferFormat.text],
         );
         var handlersSet = false;
 
         var httpClientGetCount = 0;
-        final httpClient = TestHTTPClient();
+        final httpClient = TestHttpClient();
         final options =
-            HTTPConnectionOptions(httpClient: httpClient, logger: logger);
+            HttpConnectionOptions(httpClient: httpClient, logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         httpClient
             .on(
                 (r, next) => NegotiateResponse(
@@ -805,7 +807,7 @@ void main() {
             // First long polling request must succeed so start completes
             return '';
           }
-        }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE');
+        }, 'GET').on((r, next) => HttpResponse(202), 'DELETE');
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.text);
@@ -816,16 +818,16 @@ void main() {
         expect(handlersSet, true);
       });
     });
-    test('# Transport handlers set before start for custom transports',
+    test('# transport handlers set before start for custom transports',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.none,
+          HttpTransportType.none,
           [TransferFormat.text],
         );
         final transport = FakeTransport3();
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on(
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on(
                 (r, next) => NegotiateResponse(
                       connectionId: '42',
                       availableTransports: [availableTransport],
@@ -834,7 +836,7 @@ void main() {
             logger: logger,
             transport: transport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.text);
@@ -845,15 +847,15 @@ void main() {
         expect(transport.handlersSet, true);
       });
     });
-    test('# Missing negotiateVersion ignores connectionToken', () async {
+    test('# missing negotiateVersion ignores connectionToken', () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.none,
+          HttpTransportType.none,
           [TransferFormat.text],
         );
         final transport = FakeTransport4();
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on(
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on(
                 (r, next) => NegotiateResponse(
                       connectionId: '42',
                       connectionToken: 'token',
@@ -863,7 +865,7 @@ void main() {
             logger: logger,
             transport: transport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.text);
@@ -873,15 +875,15 @@ void main() {
         }
       });
     });
-    test('# Negotiate version 0 ignores connectionToken', () async {
+    test('# negotiate version 0 ignores connectionToken', () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.none,
+          HttpTransportType.none,
           [TransferFormat.text],
         );
         final transport = FakeTransport4();
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on(
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on(
                 (r, next) => NegotiateResponse(
                       connectionId: '42',
                       connectionToken: 'token',
@@ -892,7 +894,7 @@ void main() {
             logger: logger,
             transport: transport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.text);
@@ -903,16 +905,16 @@ void main() {
       });
     });
     test(
-        '# Negotiate version 1 uses connectionToken for url and connectionId for property',
+        '# negotiate version 1 uses connectionToken for url and connectionId for property',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.none,
+          HttpTransportType.none,
           [TransferFormat.text],
         );
         final transport = FakeTransport5();
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on(
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on(
                 (r, next) => NegotiateResponse(
                       connectionId: '42',
                       connectionToken: 'token',
@@ -923,7 +925,7 @@ void main() {
             logger: logger,
             transport: transport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.text);
@@ -934,13 +936,13 @@ void main() {
         }
       });
     });
-    test('# NegotiateVersion query string not added if already present',
+    test('# negotiateVersion query string not added if already present',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final fakeTransport = FakeTransport2();
 
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => '{ \"connectionId\": \"42\" }', 'POST',
                     'http://tempuri.org/negotiate?negotiateVersion=42')
                 .on((r, next) => '', 'GET'),
@@ -948,7 +950,7 @@ void main() {
             transport: fakeTransport);
 
         final connection =
-            HTTPConnection('http://tempuri.org?negotiateVersion=42', options);
+            HttpConnection('http://tempuri.org?negotiateVersion=42', options);
         try {
           final startFuture = connection.startAsync(TransferFormat.text);
 
@@ -963,13 +965,13 @@ void main() {
       });
     });
     test(
-        '# NegotiateVersion query string not added if already present after redirect',
+        '# negotiateVersion query string not added if already present after redirect',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final fakeTransport = FakeTransport2();
 
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on((r, next) => '{ \"url\": \"http://redirect.org\" }', 'POST',
                     'http://tempuri.org/negotiate?negotiateVersion=1')
                 .on(
@@ -981,7 +983,7 @@ void main() {
             logger: logger,
             transport: fakeTransport);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           final startFuture = connection.startAsync(TransferFormat.text);
 
@@ -995,29 +997,29 @@ void main() {
         }
       });
     });
-    test('# Fallback changes connectionId property', () async {
+    test('# fallback changes connectionId property', () async {
       await VerifyLogger.runAsync((logger) async {
         // HACK: Looks like we shoud wait until Client received the last request.
         final completer = Completer();
 
         final availableTransports = [
           AvailableTransport(
-            HTTPTransportType.webSockets,
+            HttpTransportType.webSockets,
             [TransferFormat.text],
           ),
           AvailableTransport(
-            HTTPTransportType.longPolling,
+            HttpTransportType.longPolling,
             [TransferFormat.text],
           ),
         ];
         var negotiateCount = 0;
         var getCount = 0;
-        HTTPConnection connection;
+        HttpConnection connection;
         String connectionId;
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             webSocket: (url, {protocols, headers}) =>
                 TestWebSocket(url, protocols: protocols, headers: headers),
-            httpClient: TestHTTPClient().on((r, next) {
+            httpClient: TestHttpClient().on((r, next) {
               negotiateCount++;
               return NegotiateResponse(
                 connectionId: negotiateCount.toString(),
@@ -1028,16 +1030,16 @@ void main() {
             }, 'POST').on((r, next) {
               getCount++;
               if (getCount == 1) {
-                return HTTPResponse(200);
+                return HttpResponse(200);
               }
               connectionId = connection.connectionId;
-              return HTTPResponse(204);
-            }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE'),
+              return HttpResponse(204);
+            }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
             logger: logger);
 
         TestWebSocket.wsSet = Completer();
 
-        connection = HTTPConnection('http://tempuri.org', options);
+        connection = HttpConnection('http://tempuri.org', options);
         connection.onclose = (e) => completer.complete();
         final startFuture = connection.startAsync(TransferFormat.text);
 
@@ -1058,17 +1060,17 @@ void main() {
         "Failed to start the transport 'WebSockets': Exception: There was an error with the transport."
       ]);
     });
-    test('# User agent header set on negotiate', () async {
+    test('# user agent header set on negotiate', () async {
       await VerifyLogger.runAsync((logger) async {
         var userAgentValue = '';
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient().on((r, next) {
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient().on((r, next) {
               userAgentValue = r.headers['User-Agent'];
-              return HTTPResponse(200, '', '{\"error\":\"nope\"}');
+              return HttpResponse(200, '', '{\"error\":\"nope\"}');
             }, 'POST'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           await connection.startAsync(TransferFormat.text);
           // ignore: empty_catches
@@ -1080,19 +1082,19 @@ void main() {
         expect(userAgentValue, userAgent.value);
       }, ['Failed to start the connection: Exception: nope']);
     });
-    test('# Overwrites library headers with user headers on negotiate',
+    test('# overwrites library headers with user headers on negotiate',
         () async {
       await VerifyLogger.runAsync((logger) async {
         final headers = {'User-Agent': 'Custom Agent', 'X-HEADER': 'VALUE'};
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             headers: headers,
-            httpClient: TestHTTPClient().on((r, next) {
+            httpClient: TestHttpClient().on((r, next) {
               expect(r.headers, headers);
-              return HTTPResponse(200, '', '{\"error\":\"nope\"}');
+              return HttpResponse(200, '', '{\"error\":\"nope\"}');
             }, 'POST'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         try {
           await connection.startAsync(TransferFormat.text);
           // ignore: empty_catches
@@ -1101,10 +1103,10 @@ void main() {
         }
       }, ['Failed to start the connection: Exception: nope']);
     });
-    test('# LogMessageContent displays correctly with binary data', () async {
+    test('# logMessageContent displays correctly with binary data', () async {
       await VerifyLogger.runAsync((logger) async {
         final availableTransport = AvailableTransport(
-          HTTPTransportType.longPolling,
+          HttpTransportType.longPolling,
           [TransferFormat.text, TransferFormat.binary],
         );
 
@@ -1122,8 +1124,8 @@ void main() {
         });
 
         var httpClientGetCount = 0;
-        final options = HTTPConnectionOptions(
-            httpClient: TestHTTPClient()
+        final options = HttpConnectionOptions(
+            httpClient: TestHttpClient()
                 .on(
                     (r, next) => NegotiateResponse(
                           connectionId: '42',
@@ -1137,17 +1139,16 @@ void main() {
                 return '';
               }
               return Future.value();
-            }, 'GET').on((r, next) => HTTPResponse(202), 'DELETE'),
+            }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
             logMessageContent: true,
             logger: captureLogger,
-            transport: HTTPTransportType.longPolling);
+            transport: HttpTransportType.longPolling);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         connection.onreceive = (data) => null;
         try {
           await connection.startAsync(TransferFormat.binary);
-          final data =
-              Uint8List.fromList([0x68, 0x69, 0x20, 0x3a, 0x29]).buffer;
+          final data = Uint8List.fromList([0x68, 0x69, 0x20, 0x3a, 0x29]);
           await connection.sendAsync(data);
         } finally {
           await connection.stopAsync();
@@ -1157,17 +1158,17 @@ void main() {
             "(LongPolling transport) sending data. Binary data of length 5. Content: '0x68 0x69 0x20 0x3a 0x29'.");
       });
     });
-    test('# Send after restarting connection works', () async {
+    test('# send after restarting connection works', () async {
       await VerifyLogger.runAsync((logger) async {
-        final options = HTTPConnectionOptions(
+        final options = HttpConnectionOptions(
             webSocket: (url, {protocols, headers}) =>
                 TestWebSocket(url, protocols: protocols, headers: headers),
-            httpClient: TestHTTPClient()
+            httpClient: TestHttpClient()
                 .on((r, next) => DEFAULT_NEGOTIATE_RESPONSE, 'POST')
                 .on((r, next) => '', 'GET'),
             logger: logger);
 
-        final connection = HTTPConnection('http://tempuri.org', options);
+        final connection = HttpConnection('http://tempuri.org', options);
         final closeCompleter = Completer<void>();
         connection.onclose = (e) => closeCompleter.complete();
 
@@ -1191,23 +1192,23 @@ void main() {
         await connection.sendAsync('text');
       });
     });
-    group('# Constructor', () {
-      test('# Throws if no url is provided', () {
+    group('# constructor', () {
+      test('# throws if no url is provided', () {
         final m = predicate(
             (e) => '$e' == "Exception: The 'url' argument is required.");
         final matcher = throwsA(m);
-        expect(() => HTTPConnection(null), matcher);
+        expect(() => HttpConnection(null), matcher);
       });
-      test('# Uses EventSource constructor from options if provided', () async {
+      test('# uses EventSource constructor from options if provided', () async {
         await VerifyLogger.runAsync((logger) async {
-          final options = HTTPConnectionOptions(
+          final options = HttpConnectionOptions(
               eventSource: (url, {headers, withCredentials}) =>
                   FakeEventSource1(),
-              httpClient: TestHTTPClient().on((r, next) {
+              httpClient: TestHttpClient().on((r, next) {
                 return NegotiateResponse(
                   availableTransports: [
                     AvailableTransport(
-                      HTTPTransportType.serverSentEvents,
+                      HttpTransportType.serverSentEvents,
                       [TransferFormat.text],
                     ),
                   ],
@@ -1215,9 +1216,9 @@ void main() {
                 );
               }, 'POST'),
               logger: logger,
-              transport: HTTPTransportType.serverSentEvents);
+              transport: HttpTransportType.serverSentEvents);
 
-          final connection = HTTPConnection('http://tempuri.org', options);
+          final connection = HttpConnection('http://tempuri.org', options);
 
           final m = predicate((e) =>
               '$e' ==
@@ -1232,15 +1233,15 @@ void main() {
           'Failed to start the connection: Exception: Unable to connect to the server with any of the available transports. ServerSentEvents failed: Exception: EventSource constructor called.'
         ]);
       });
-      test('# Uses WebSocket constructor from options if provided', () async {
+      test('# uses WebSocket constructor from options if provided', () async {
         await VerifyLogger.runAsync((logger) async {
-          final options = HTTPConnectionOptions(
+          final options = HttpConnectionOptions(
               webSocket: (url, {protocols, headers}) => FakeWebSocket2(),
               logger: logger,
               skipNegotiation: true,
-              transport: HTTPTransportType.webSockets);
+              transport: HttpTransportType.webSockets);
 
-          final connection = HTTPConnection('http://tempuri.org', options);
+          final connection = HttpConnection('http://tempuri.org', options);
 
           final m = predicate(
               (e) => '$e' == 'Exception: WebSocket constructor called.');
@@ -1251,12 +1252,12 @@ void main() {
         ]);
       });
     });
-    group('# StartAsync', () {
-      test('# Throws if trying to connect to an ASP.NET Signalr Server',
+    group('# startAsync', () {
+      test('# throws if trying to connect to an ASP.NET Signalr Server',
           () async {
         await VerifyLogger.runAsync((logger) async {
-          final options = HTTPConnectionOptions(
-              httpClient: TestHTTPClient()
+          final options = HttpConnectionOptions(
+              httpClient: TestHttpClient()
                   .on(
                       (r, next) => '{\"Url\":\"/signalr\",'
                           '\"ConnectionToken\":\"X97dw3uxW4NPPggQsYVcNcyQcuz4w2\",'
@@ -1271,7 +1272,7 @@ void main() {
                   .on((r, next) => '', 'GET'),
               logger: logger);
 
-          final connection = HTTPConnection('http://tempuri.org', options);
+          final connection = HttpConnection('http://tempuri.org', options);
           var receivedError = false;
           try {
             await connection.startAsync(TransferFormat.text);
@@ -1292,7 +1293,7 @@ void main() {
     });
   });
   group('# TransportSendQueue', () {
-    test('# Sends data when not currently sending', () async {
+    test('# sends data when not currently sending', () async {
       final transport = MockTransport();
 
       when(transport.sendAsync(any)).thenAnswer((_) => Future.value());
@@ -1302,7 +1303,7 @@ void main() {
       verify(transport.sendAsync('Hello')).called(1);
       await queue.stopAsync();
     });
-    test('# Sends buffered data on fail', () async {
+    test('# sends buffered data on fail', () async {
       final completer1 = Completer<void>();
       final completer2 = Completer<void>();
       final completer3 = Completer<void>();
@@ -1340,7 +1341,7 @@ void main() {
 
       await queue.stopAsync();
     });
-    test('# Rejects future for buffered sends', () async {
+    test('# rejects future for buffered sends', () async {
       final completer1 = Completer<void>();
       final completer2 = Completer<void>();
       final completer3 = Completer<void>();
@@ -1378,7 +1379,7 @@ void main() {
 
       await queue.stopAsync();
     });
-    test('# Concatenates string sends', () async {
+    test('# concatenates string sends', () async {
       final completer1 = Completer<void>();
       final completer2 = Completer<void>();
       final completer3 = Completer<void>();
@@ -1412,7 +1413,7 @@ void main() {
 
       await queue.stopAsync();
     });
-    test('# Concatenates buffered ArrayBuffer', () async {
+    test('# concatenates buffered ArrayBuffer', () async {
       final completer1 = Completer<void>();
       final completer2 = Completer<void>();
       final completer3 = Completer<void>();
@@ -1426,7 +1427,7 @@ void main() {
 
       final queue = TransportSendQueue(transport);
 
-      final data1 = Uint8List.fromList([4, 5, 6]).buffer;
+      final data1 = Uint8List.fromList([4, 5, 6]);
       final first = queue.sendAsync(data1);
       // This should allow first to enter transport.send
       completer1.complete();
@@ -1434,9 +1435,9 @@ void main() {
       await completer2.future;
 
       // These two operations should get queued.
-      final data2 = Uint8List.fromList([7, 8, 10]).buffer;
+      final data2 = Uint8List.fromList([7, 8, 10]);
       final second = queue.sendAsync(data2);
-      final data3 = Uint8List.fromList([12, 14]).buffer;
+      final data3 = Uint8List.fromList([12, 14]);
       final third = queue.sendAsync(data3);
 
       completer3.complete();
@@ -1445,12 +1446,12 @@ void main() {
 
       final captured = verify(transport.sendAsync(captureAny)).captured;
       expect(captured.length, 2);
-      expect(captured[0].asUint8List().toList(), [4, 5, 6]);
-      expect(captured[1].asUint8List().toList(), [7, 8, 10, 12, 14]);
+      expect(captured[0].toList(), [4, 5, 6]);
+      expect(captured[1].toList(), [7, 8, 10, 12, 14]);
 
       await queue.stopAsync();
     });
-    test('# Throws if mixed data is queued', () async {
+    test('# throws if mixed data is queued', () async {
       final completer1 = Completer<void>();
       final completer2 = Completer<void>();
       final completer3 = Completer<void>();
@@ -1464,7 +1465,7 @@ void main() {
 
       final queue = TransportSendQueue(transport);
 
-      final data1 = Uint8List.fromList([4, 5, 6]).buffer;
+      final data1 = Uint8List.fromList([4, 5, 6]);
       final first = queue.sendAsync(data1);
       // This should allow first to enter transport.send
       completer1.complete();
@@ -1472,7 +1473,7 @@ void main() {
       await completer2.future;
 
       // These two operations should get queued.
-      final data2 = Uint8List.fromList([7, 8, 10]).buffer;
+      final data2 = Uint8List.fromList([7, 8, 10]);
       final second = queue.sendAsync(data2);
       expect(() => queue.sendAsync('A string!'), throwsException);
 
@@ -1481,7 +1482,7 @@ void main() {
       await Future.wait([first, second]);
       await queue.stopAsync();
     });
-    test('# Rejects pending futures on stop', () async {
+    test('# rejects pending futures on stop', () async {
       final completer = Completer();
       final transport = MockTransport();
       when(transport.sendAsync(any))
@@ -1496,7 +1497,7 @@ void main() {
       final matcher = throwsA(m);
       await expectLater(send, matcher);
     });
-    test('# Prevents additional sends after stop', () async {
+    test('# prevents additional sends after stop', () async {
       final completer = Completer();
       final transport = MockTransport();
       when(transport.sendAsync(any))
@@ -1520,7 +1521,7 @@ class FakeTransport1 extends Fake implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) {
@@ -1543,7 +1544,7 @@ class FakeTransport2 extends Fake implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   FakeTransport2() : connectUrl = Completer();
 
@@ -1569,7 +1570,7 @@ class FakeTransport3 extends Fake implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   FakeTransport3() : handlersSet = false;
 
@@ -1597,7 +1598,7 @@ class FakeTransport4 extends Fake implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) {
@@ -1621,7 +1622,7 @@ class FakeTransport5 extends Fake implements Transport {
   @override
   void Function(Exception error) onclose;
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
 
   FakeTransport5() : connectUrl = '';
 
@@ -1650,11 +1651,11 @@ class FakeWebSocket1 extends Fake implements WebSocket {
   @override
   void Function(Exception error) onerror;
   @override
-  void Function(dynamic data) ondata;
+  void Function(Object data) ondata;
   @override
   void Function(int code, String reason) onclose;
 
-  dynamic Function() websocketOpen;
+  Object Function() websocketOpen;
   final SyncPoint sync;
 
   void Function() _onopen;

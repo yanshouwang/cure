@@ -1,16 +1,14 @@
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 
 import 'hub_protocol.dart';
 import 'logger.dart';
 import 'text_message_format.dart';
 import 'transport.dart';
 
-const JSON_HUB_PROTOCOL_NAME = 'json';
-
 /// Implements the JSON Hub Protocol.
-class JSONHubProtocol implements HubProtocol {
+class JsonHubProtocol implements HubProtocol {
   @override
-  String get name => JSON_HUB_PROTOCOL_NAME;
+  String get name => 'json';
   @override
   int get version => 1;
   @override
@@ -21,7 +19,7 @@ class JSONHubProtocol implements HubProtocol {
   /// [input] A string containing the serialized representation.
   /// [logger] A logger that will be used to log messages that occur during parsing.
   @override
-  List<HubMessage> parseMessages(dynamic input, Logger logger) {
+  List<HubMessage> parseMessages(Object input, Logger logger) {
     if (input is String) {
       final hubMessages = <HubMessage>[];
       if (input != null) {
@@ -29,7 +27,7 @@ class JSONHubProtocol implements HubProtocol {
         // Parse the messages
         final messages = TextMessageFormat.parse(input);
         for (final message in messages) {
-          final obj = JSON.fromJSON(message) as Map<String, dynamic>;
+          final obj = json.decode(message) as Map<String, Object>;
           final type = obj['type'];
           if (type is int) {
             final value = MessageType.fromJSON(type);
@@ -91,8 +89,8 @@ class JSONHubProtocol implements HubProtocol {
   /// message The message to write.
   /// Returns a string containing the serialized representation of the message.
   @override
-  dynamic writeMessage(HubMessage message) {
-    final output = JSON.toJSON(message);
+  Object writeMessage(HubMessage message) {
+    final output = json.encode(message);
     return TextMessageFormat.write(output);
   }
 
@@ -129,7 +127,7 @@ class JSONHubProtocol implements HubProtocol {
         message.invocationId, 'Invalid payload for Completion message.');
   }
 
-  void _assertNotEmptyString(dynamic value, String errorMessage) {
+  void _assertNotEmptyString(Object value, String errorMessage) {
     if (value is String && value.isNotEmpty) {
       // value is not empty string, just continue.
     } else {

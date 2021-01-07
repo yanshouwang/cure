@@ -1,6 +1,6 @@
 ## What?
 
-Cure is a library for Dart developers which contains some useful tools and extensions: JSON, CRC, HTTP, EventSource, WebSocket, Signalr, etc.
+Cure is a library for Dart developers which contains some useful tools and extensions: Signalr, MessagePack, CRC, HTTP, EventSource, WebSocket, etc.
 
 ## Why?
 
@@ -8,7 +8,7 @@ Dart is a beautiful language which is used by Flutter framework. But some tools 
 
 ## How?
 
-Talk is cheap. Show me the [code](example):)
+Talk is cheap. Show me the [code](example/README.md):)
 
 ## Features and bugs
 

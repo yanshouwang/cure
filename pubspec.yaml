@@ -1,7 +1,7 @@
 name: cure
 description: >-
-  A library for Dart developers which contains some useful tools and extensions: JSON, CRC, HTTP, EventSource, WebSocket, Signalr, etc.
-version: 0.0.3
+  A library for Dart developers which contains some useful tools and extensions: Signalr, MessagePack, CRC, HTTP, EventSource, WebSocket, etc.
+version: 0.0.4
 homepage: https://github.com/yanshouwang/cure
 
 environment:
@@ -10,6 +10,7 @@ environment:
 dependencies:
   pedantic: ^1.9.2
   string_scanner: ^1.0.5
+  tuple: ^1.0.3
 
 dev_dependencies:
   test: ^1.15.7

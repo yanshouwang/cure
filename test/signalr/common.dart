@@ -1,11 +1,11 @@
 import 'package:cure/signalr.dart';
 import 'package:test/test.dart';
 
-void eachTransport(void Function(HTTPTransportType transport) action) {
+void eachTransport(void Function(HttpTransportType transport) action) {
   final transports = [
-    HTTPTransportType.webSockets,
-    HTTPTransportType.serverSentEvents,
-    HTTPTransportType.longPolling
+    HttpTransportType.webSockets,
+    HttpTransportType.serverSentEvents,
+    HttpTransportType.longPolling
   ];
   for (var transport in transports) {
     action.call(transport);
@@ -40,7 +40,7 @@ class VerifyLogger implements Logger {
   List<String> unexpectedErrors;
   List<bool Function(String error)> expectedErrors;
 
-  VerifyLogger(List<dynamic> expectedErrors)
+  VerifyLogger(List<Object> expectedErrors)
       : unexpectedErrors = [],
         expectedErrors = [] {
     for (var element in expectedErrors) {
@@ -57,7 +57,7 @@ class VerifyLogger implements Logger {
   }
 
   static Future<void> runAsync(Future<void> Function(VerifyLogger logger) fn,
-      [List<dynamic> expectedErrors = const []]) async {
+      [List<Object> expectedErrors = const []]) async {
     final logger = VerifyLogger(expectedErrors);
     await fn(logger);
     final actual = logger.unexpectedErrors.join('\n');

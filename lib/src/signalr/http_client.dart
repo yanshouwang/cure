@@ -3,48 +3,48 @@ import 'abort_controller.dart';
 /// Abstraction over an HTTP client.
 ///
 /// This class provides an abstraction over an HTTP client so that a different implementation can be provided on different platforms.
-abstract class HTTPClient {
-  /// Issues an HTTP GET request to the specified URL, returning a [Future] that resolves with an [HTTPResponse] representing the result.
+abstract class HttpClient {
+  /// Issues an HTTP GET request to the specified URL, returning a [Future] that resolves with an [HttpResponse] representing the result.
   ///
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
-  /// Returns a [Future] that resolves with an [HTTPResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HTTPResponse> getAsync(String url, [HTTPRequest options]) {
-    options ??= HTTPRequest();
+  /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
+  Future<HttpResponse> getAsync(String url, [HttpRequest options]) {
+    options ??= HttpRequest();
     options.method = 'GET';
     options.url = url;
     return sendAsync(options);
   }
 
-  /// Issues an HTTP POST request to the specified URL, returning a [Future] that resolves with an [HTTPResponse] representing the result.
+  /// Issues an HTTP POST request to the specified URL, returning a [Future] that resolves with an [HttpResponse] representing the result.
   ///
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
-  /// Returns a [Future] that resolves with an [HTTPResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HTTPResponse> postAsync(String url, [HTTPRequest options]) {
-    options ??= HTTPRequest();
+  /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
+  Future<HttpResponse> postAsync(String url, [HttpRequest options]) {
+    options ??= HttpRequest();
     options.method = 'POST';
     options.url = url;
     return sendAsync(options);
   }
 
-  /// Issues an HTTP DELETE request to the specified URL, returning a [Future] that resolves with an [HTTPResponse] representing the result.
+  /// Issues an HTTP DELETE request to the specified URL, returning a [Future] that resolves with an [HttpResponse] representing the result.
   ///
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
-  /// Returns a [Future] that resolves with an [HTTPResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HTTPResponse> deleteAsync(String url, [HTTPRequest options]) {
-    options ??= HTTPRequest();
+  /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
+  Future<HttpResponse> deleteAsync(String url, [HttpRequest options]) {
+    options ??= HttpRequest();
     options.method = 'DELETE';
     options.url = url;
     return sendAsync(options);
   }
 
-  /// Issues an HTTP request to the specified URL, returning a [Future] that resolves with an [HTTPResponse] representing the result.
+  /// Issues an HTTP request to the specified URL, returning a [Future] that resolves with an [HttpResponse] representing the result.
   ///
-  /// [request] An [HTTPRequest] describing the request to send.
-  /// Returns a [Future] that resolves with an HTTPResponse describing the response, or rejects with an Error indicating a failure.
-  Future<HTTPResponse> sendAsync(HTTPRequest request);
+  /// [request] An [HttpRequest] describing the request to send.
+  /// Returns a [Future] that resolves with an HttpResponse describing the response, or rejects with an Error indicating a failure.
+  Future<HttpResponse> sendAsync(HttpRequest request);
 
   /// Gets all cookies that apply to the specified URL.
   ///
@@ -56,7 +56,7 @@ abstract class HTTPClient {
 }
 
 /// Represents an HTTP request.
-abstract class HTTPRequest {
+abstract class HttpRequest {
   /// The HTTP method to use for the request.
   String method;
 
@@ -64,7 +64,7 @@ abstract class HTTPRequest {
   String url;
 
   /// The body content for the request. May be a string or an ArrayBuffer (for binary data).
-  dynamic content;
+  Object content;
 
   /// An object describing headers to apply to the request.
   Map<String, String> headers;
@@ -81,20 +81,20 @@ abstract class HTTPRequest {
   /// This controls whether credentials such as cookies are sent in cross-site requests.
   bool withCredentials;
 
-  factory HTTPRequest(
+  factory HttpRequest(
           {String method,
           String url,
-          dynamic content,
+          Object content,
           Map<String, String> headers,
           String responseType,
           AbortSignal abortSignal,
           int timeout,
           bool withCredentials}) =>
-      _HTTPRequest(method, url, content, headers, responseType, abortSignal,
+      _HttpRequest(method, url, content, headers, responseType, abortSignal,
           timeout, withCredentials);
 }
 
-class _HTTPRequest implements HTTPRequest {
+class _HttpRequest implements HttpRequest {
   @override
   AbortSignal abortSignal;
   @override
@@ -112,12 +112,12 @@ class _HTTPRequest implements HTTPRequest {
   @override
   bool withCredentials;
 
-  _HTTPRequest(this.method, this.url, this.content, this.headers,
+  _HttpRequest(this.method, this.url, this.content, this.headers,
       this.responseType, this.abortSignal, this.timeout, this.withCredentials);
 }
 
 /// Represents an HTTP response.
-abstract class HTTPResponse {
+abstract class HttpResponse {
   /// The status code of the response.
   final int statusCode;
 
@@ -125,26 +125,26 @@ abstract class HTTPResponse {
   final String statusText;
 
   /// The content of the response.
-  final dynamic content;
+  final Object content;
 
-  /// Constructs a new instance of [HTTPResponse] with the specified status code, message and binary content.
+  /// Constructs a new instance of [HttpResponse] with the specified status code, message and binary content.
   ///
   /// [statusCode] The status code of the response.
   ///
   /// [statusText] The status message of the response.
   ///
   /// [content] The content of the response.
-  factory HTTPResponse(int statusCode, [String statusText, dynamic content]) =>
-      _HTTPResponse(statusCode, statusText, content);
+  factory HttpResponse(int statusCode, [String statusText, Object content]) =>
+      _HttpResponse(statusCode, statusText, content);
 }
 
-class _HTTPResponse implements HTTPResponse {
+class _HttpResponse implements HttpResponse {
   @override
   final int statusCode;
   @override
   final String statusText;
   @override
-  final dynamic content;
+  final Object content;
 
-  _HTTPResponse(this.statusCode, this.statusText, this.content);
+  _HttpResponse(this.statusCode, this.statusText, this.content);
 }

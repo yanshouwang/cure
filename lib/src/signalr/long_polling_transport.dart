@@ -6,8 +6,8 @@ import 'transport.dart';
 import 'utils.dart';
 
 class LongPollingTransport implements Transport {
-  final HTTPClient _httpClient;
-  final dynamic Function() _accessTokenFactory;
+  final HttpClient _httpClient;
+  final Object Function() _accessTokenFactory;
   final Logger _logger;
   final bool _logMessageContent;
   final bool _withCredentials;
@@ -20,7 +20,7 @@ class LongPollingTransport implements Transport {
   Exception _closeError;
 
   @override
-  void Function(dynamic data) onreceive;
+  void Function(Object data) onreceive;
   @override
   void Function(Exception error) onclose;
 
@@ -52,7 +52,7 @@ class LongPollingTransport implements Transport {
       }
     }
 
-    final pollOptions = HTTPRequest(
+    final pollOptions = HttpRequest(
         abortSignal: _pollAbort.signal,
         headers: headers,
         timeout: 100000,
@@ -75,7 +75,7 @@ class LongPollingTransport implements Transport {
           '(LongPolling transport) Unexpected response code: ${response.statusCode}.');
       // Mark running as false so that the poll immediately ends and runs the close logic
       _closeError =
-          HTTPException(response.statusText ?? '', response.statusCode);
+          HttpException(response.statusText ?? '', response.statusCode);
       _running = false;
     } else {
       _running = true;
@@ -127,7 +127,7 @@ class LongPollingTransport implements Transport {
       }
 
       final deleteOptions =
-          HTTPRequest(headers: headers, withCredentials: _withCredentials);
+          HttpRequest(headers: headers, withCredentials: _withCredentials);
       final token = await _getAccessTokenAsync();
       _updateHeaderToken(deleteOptions, token);
       await _httpClient.deleteAsync(_url, deleteOptions);
@@ -147,7 +147,7 @@ class LongPollingTransport implements Transport {
     return await _accessTokenFactory?.call();
   }
 
-  void _updateHeaderToken(HTTPRequest request, String token) {
+  void _updateHeaderToken(HttpRequest request, String token) {
     request.headers ??= {};
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
@@ -158,7 +158,7 @@ class LongPollingTransport implements Transport {
     }
   }
 
-  Future<void> _pollAsync(String url, HTTPRequest pollOptions) async {
+  Future<void> _pollAsync(String url, HttpRequest pollOptions) async {
     try {
       while (_running) {
         // We have to get the access token on each poll, in case it changes
@@ -179,7 +179,7 @@ class LongPollingTransport implements Transport {
                 '(LongPolling transport) Unexpected response code: ${response.statusCode}.');
             // Unexpected status code
             _closeError =
-                HTTPException(response.statusText ?? '', response.statusCode);
+                HttpException(response.statusText ?? '', response.statusCode);
             _running = false;
           } else {
             // Process the response

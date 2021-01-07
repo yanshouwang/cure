@@ -1,19 +1,19 @@
 import 'exceptions.dart';
 import 'http_client_stub.dart'
-    if (dart.library.html) 'http_client_html.dart'
-    if (dart.library.io) 'http_client_io.dart';
+    if (dart.library.html) 'http_client_chromium.dart'
+    if (dart.library.io) 'http_client_dartium.dart';
 import 'http_client.dart';
 import 'logger.dart';
 
-/// Default implementation of [HTTPClient].
-class DefaultHTTPClient extends HTTPClient {
-  final HTTPClient _httpClient;
+/// Default implementation of [HttpClient].
+class DefaultHttpClient extends HttpClient {
+  final HttpClient _httpClient;
 
-  /// Creates a new instance of the [HTTPClient], using the provided [logger] to log messages.
-  DefaultHTTPClient(Logger logger) : _httpClient = createClient(logger);
+  /// Creates a new instance of the [HttpClient], using the provided [logger] to log messages.
+  DefaultHttpClient(Logger logger) : _httpClient = createClient(logger);
 
   @override
-  Future<HTTPResponse> sendAsync(HTTPRequest request) {
+  Future<HttpResponse> sendAsync(HttpRequest request) {
     if (request.abortSignal != null && request.abortSignal.aborted) {
       final error = AbortException();
       return Future.error(error);

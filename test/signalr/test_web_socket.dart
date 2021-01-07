@@ -11,7 +11,7 @@ class TestWebSocket implements WebSocket {
   @override
   void Function(Exception error) onerror;
   @override
-  void Function(dynamic data) ondata;
+  void Function(Object data) ondata;
   @override
   String protocol;
   @override
@@ -23,7 +23,7 @@ class TestWebSocket implements WebSocket {
 
   static Completer<void> wsSet;
   static TestWebSocket ws;
-  List<dynamic> receivedData;
+  List<Object> receivedData;
 
   void Function() _onopen;
   var openSet = Completer<void>();
@@ -71,7 +71,7 @@ class TestWebSocket implements WebSocket {
   }
 
   @override
-  void send(dynamic data) {
+  void send(Object data) {
     if (closed) {
       throw Exception("cannot send from a closed transport: '$data'");
     }

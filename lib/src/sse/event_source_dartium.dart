@@ -106,7 +106,7 @@ class _EventSource implements EventSource {
     }
   }
 
-  void _onError(dynamic error) {
+  void _onError(Object error) {
     error = error is Exception ? error : Exception('EventSource error: $error');
     onerror?.call(error);
   }

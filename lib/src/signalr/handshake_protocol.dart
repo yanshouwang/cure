@@ -1,29 +1,28 @@
 import 'dart:typed_data';
 
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 
 import 'text_message_format.dart';
 
 abstract class HandshakeProtocol {
   String writeHandshakeRequest(HandshakeRequestMessage handshakeRequest);
-  MapEntry<dynamic, HandshakeResponseMessage> parseHandshakeResponse(
-      dynamic data);
+  MapEntry<Object, HandshakeResponseMessage> parseHandshakeResponse(
+      Object data);
 
   factory HandshakeProtocol() => _HandshakeProtocol();
 }
 
 class _HandshakeProtocol implements HandshakeProtocol {
   @override
-  MapEntry<dynamic, HandshakeResponseMessage> parseHandshakeResponse(data) {
+  MapEntry<Object, HandshakeResponseMessage> parseHandshakeResponse(data) {
     HandshakeResponseMessage responseMessage;
     String messageData;
-    dynamic remainingData;
+    Object remainingData;
 
-    if (data is ByteBuffer) {
+    if (data is Uint8List) {
       // Format is binary but still need to read JSON text from handshake response
-      final binaryData = data.asUint8List();
       final separatorIndex =
-          binaryData.indexOf(TextMessageFormat.recordSeparatorCode);
+          data.indexOf(TextMessageFormat.recordSeparatorCode);
       if (separatorIndex == -1) {
         throw Exception('Message is incomplete.');
       }
@@ -31,13 +30,13 @@ class _HandshakeProtocol implements HandshakeProtocol {
       // content before separator is handshake response
       // optional content after is additional messages
       final responseLength = separatorIndex + 1;
-      final charCodes = binaryData.sublist(0, responseLength);
+      final charCodes = data.sublist(0, responseLength);
       messageData = String.fromCharCodes(charCodes);
-      remainingData = binaryData.lengthInBytes > responseLength
-          ? binaryData.sublist(responseLength).buffer
+      remainingData = data.lengthInBytes > responseLength
+          ? data.sublist(responseLength)
           : null;
     } else {
-      final textData = data;
+      final textData = data as String;
       final separatorIndex =
           textData.indexOf(TextMessageFormat.recordSeparator);
       if (separatorIndex == -1) {
@@ -55,7 +54,7 @@ class _HandshakeProtocol implements HandshakeProtocol {
 
     // At this point we should have just the single handshake message
     final messages = TextMessageFormat.parse(messageData);
-    final source = JSON.fromJSON(messages[0]);
+    final source = json.decode(messages[0]);
     final response = HandshakeResponseMessage.fromJSON(source);
     if (response == null) {
       throw Exception('Expected a handshake response from the server.');
@@ -70,8 +69,7 @@ class _HandshakeProtocol implements HandshakeProtocol {
   // Handshake request is always JSON
   @override
   String writeHandshakeRequest(HandshakeRequestMessage handshakeRequest) {
-    //final obj = handshakeRequest.toJSON();
-    final output = JSON.toJSON(handshakeRequest);
+    final output = json.encode(handshakeRequest);
     return TextMessageFormat.write(output);
   }
 }
@@ -80,13 +78,13 @@ abstract class HandshakeRequestMessage {
   String get protocol;
   int get version;
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 
   factory HandshakeRequestMessage(String protocol, int version) {
     return _HandshakeRequestMessage(protocol, version);
   }
 
-  factory HandshakeRequestMessage.fromJSON(Map<String, dynamic> obj) {
+  factory HandshakeRequestMessage.fromJSON(Map<String, Object> obj) {
     final protocol = obj['protocol'] as String;
     final version = obj['version'] as int;
     return _HandshakeRequestMessage(protocol, version);
@@ -102,8 +100,8 @@ class _HandshakeRequestMessage implements HandshakeRequestMessage {
   _HandshakeRequestMessage(this.protocol, this.version);
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{
       'protocol': protocol,
       'version': version,
     };
@@ -115,13 +113,13 @@ abstract class HandshakeResponseMessage {
   String get error;
   int get minorVersion;
 
-  Map<String, dynamic> toJSON();
+  Map<String, Object> toJSON();
 
   factory HandshakeResponseMessage({String error, int minorVersion}) {
     return _HandshakeResponseMessage(error, minorVersion);
   }
 
-  factory HandshakeResponseMessage.fromJSON(Map<String, dynamic> obj) {
+  factory HandshakeResponseMessage.fromJSON(Map<String, Object> obj) {
     final error = obj['error'] as String;
     final minorVersion = obj['minorVersion'] as int;
     return _HandshakeResponseMessage(error, minorVersion);
@@ -137,8 +135,8 @@ class _HandshakeResponseMessage implements HandshakeResponseMessage {
   _HandshakeResponseMessage(this.error, this.minorVersion);
 
   @override
-  Map<String, dynamic> toJSON() {
-    final obj = <String, dynamic>{};
+  Map<String, Object> toJSON() {
+    final obj = <String, Object>{};
     obj.writeNotNull('error', error);
     obj.writeNotNull('minorVersion', minorVersion);
     return obj;

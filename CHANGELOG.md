@@ -1,3 +1,9 @@
+## 0.0.4 - 2021/01/07
+
+- Add MessagePack
+- Add MessagePackHubProtocol for Signalr
+- Fix Use Codec API and remove the JSON class
+
 ## 0.0.3 - 2021/01/01
 
 - Migrate [Follow HTTP redirects TS client #28912](https://github.com/dotnet/aspnetcore/pull/28912)

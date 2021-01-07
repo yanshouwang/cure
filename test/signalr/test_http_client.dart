@@ -1,37 +1,37 @@
-import 'package:cure/serialization.dart';
+import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
 
-typedef TestHTTPHandler = dynamic Function(HTTPRequest request,
-    Future<HTTPResponse> Function(HTTPRequest request) next);
+typedef TestHttpHandler = dynamic Function(HttpRequest request,
+    Future<HttpResponse> Function(HttpRequest request) next);
 
-class TestHTTPClient extends HTTPClient {
-  Future<HTTPResponse> Function(HTTPRequest request) _handler;
-  List<HTTPRequest> requests;
+class TestHttpClient extends HttpClient {
+  Future<HttpResponse> Function(HttpRequest request) _handler;
+  List<HttpRequest> requests;
 
-  TestHTTPClient()
+  TestHttpClient()
       : requests = [],
         _handler = ((request) => Future.error(
             'Request has no handler: ${request.method} ${request.url}'));
 
   @override
-  Future<HTTPResponse> sendAsync(HTTPRequest request) {
+  Future<HttpResponse> sendAsync(HttpRequest request) {
     requests.add(request);
     return _handler(request);
   }
 
-  TestHTTPClient on(TestHTTPHandler handler, [dynamic method, dynamic url]) {
+  TestHttpClient on(TestHttpHandler handler, [Object method, Object url]) {
     // TypeScript callers won't be able to do this, because TypeScript checks this for us.
     if (handler == null) {
       throw "Missing required argument: 'handler'";
     }
 
     final oldHandler = _handler;
-    final newHandler = (HTTPRequest request) async {
+    final newHandler = (HttpRequest request) async {
       if (_matches(method, request.method) && _matches(url, request.url)) {
         final future = handler(request, oldHandler);
 
-        dynamic val;
-        if (future is Future<dynamic>) {
+        Object val;
+        if (future is Future<Object>) {
           val = await future;
         } else {
           val = future;
@@ -39,14 +39,14 @@ class TestHTTPClient extends HTTPClient {
 
         if (val is String) {
           // string payload
-          return HTTPResponse(200, 'OK', val);
-        } else if (val is HTTPResponse) {
+          return HttpResponse(200, 'OK', val);
+        } else if (val is HttpResponse) {
           // HttpResponse payload
           return val;
         } else {
           // JSON payload
-          final content = val != null ? JSON.toJSON(val) : val;
-          return HTTPResponse(200, 'OK', content);
+          final content = val != null ? json.encode(val) : val;
+          return HttpResponse(200, 'OK', content);
         }
       } else {
         return await oldHandler(request);
@@ -58,7 +58,7 @@ class TestHTTPClient extends HTTPClient {
   }
 }
 
-bool _matches(dynamic pattern, String actual) {
+bool _matches(Object pattern, String actual) {
   // Null or undefined pattern matches all.
   if (pattern == null) {
     return true;

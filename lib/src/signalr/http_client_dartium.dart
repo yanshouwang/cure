@@ -1,22 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as dartium;
 
-import 'package:cure/utils.dart';
+import 'package:cure/core.dart';
 
 import 'exceptions.dart';
 import 'http_client.dart';
 import 'logger.dart';
 
-HTTPClient createClient(Logger logger) => _HTTPClient(logger);
+HttpClient createClient(Logger logger) => _HttpClient(logger);
 
-class _HTTPClient extends HTTPClient {
+class _HttpClient extends HttpClient {
   final Logger _logger;
 
-  _HTTPClient(this._logger);
+  _HttpClient(this._logger);
 
   @override
-  Future<HTTPResponse> sendAsync(HTTPRequest request) async {
+  Future<HttpResponse> sendAsync(HttpRequest request) async {
     // Check that abort was not signaled before calling send
     if (request.abortSignal != null && request.abortSignal.aborted) {
       throw AbortException();
@@ -27,7 +27,7 @@ class _HTTPClient extends HTTPClient {
     if (request.url == null) {
       throw Exception('No url defined.');
     }
-    final client = HttpClient();
+    final client = dartium.HttpClient();
     Timer timer;
     try {
       final url = Uri.parse(request.url);
@@ -57,10 +57,10 @@ class _HTTPClient extends HTTPClient {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final content =
             await _deserializeContentAsync(response, request.responseType);
-        return HTTPResponse(
+        return HttpResponse(
             response.statusCode, response.reasonPhrase, content);
       } else {
-        throw HTTPException(response.reasonPhrase, response.statusCode);
+        throw HttpException(response.reasonPhrase, response.statusCode);
       }
     } catch (e) {
       _logger.log(LogLevel.warning, 'Error from HTTP request. $e.');
@@ -77,12 +77,12 @@ class _HTTPClient extends HTTPClient {
     }
   }
 
-  Future<dynamic> _deserializeContentAsync(
-      HttpClientResponse response, String responseType) {
-    dynamic content;
+  Future<Object> _deserializeContentAsync(
+      dartium.HttpClientResponse response, String responseType) async {
+    Object content;
     switch (responseType) {
       case 'arraybuffer':
-        content = response.extractAsync();
+        content = await response.extractAsync();
         break;
       case 'blob':
       case 'document':
@@ -93,7 +93,7 @@ class _HTTPClient extends HTTPClient {
       default:
         final charset = response.headers.contentType?.charset;
         final encoding = charset == null ? utf8 : Encoding.getByName(charset);
-        content = encoding.decodeStream(response);
+        content = await encoding.decodeStream(response);
         break;
     }
     return content;

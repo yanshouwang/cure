@@ -4,15 +4,15 @@ import 'http_client.dart';
 import 'logger.dart';
 import 'stream.dart';
 import 'utils_stub.dart'
-    if (dart.library.html) 'utils_html.dart'
-    if (dart.library.io) 'utils_io.dart' as utils;
+    if (dart.library.html) 'utils_chromium.dart'
+    if (dart.library.io) 'utils_dartium.dart' as utils;
 import 'subject.dart';
 
 /// The version of the Signalr client.
-const VERSION = '5.0.0-dev';
+const VERSION = '5.0.1';
 
 class Arg {
-  static void isRequired(dynamic val, String name) {
+  static void isRequired(Object val, String name) {
     if (val == null) {
       throw Exception("The '${name}' argument is required.");
     }
@@ -25,7 +25,7 @@ class Arg {
     }
   }
 
-  static void isIn(dynamic val, List<dynamic> values, String name) {
+  static void isIn(Object val, List<Object> values, String name) {
     if (!values.contains(val)) {
       throw Exception('Unknown ${name} value: ${val}.');
     }
@@ -37,9 +37,9 @@ class Platform {
   static bool get isVM => utils.isVM;
 }
 
-String getDataDetail(dynamic data, bool includeContent) {
+String getDataDetail(Object data, bool includeContent) {
   var detail = '';
-  if (data is ByteBuffer) {
+  if (data is Uint8List) {
     detail = 'Binary data of length ${data.lengthInBytes}';
     if (includeContent) {
       detail += ". Content: '${data.format()}'";
@@ -53,11 +53,10 @@ String getDataDetail(dynamic data, bool includeContent) {
   return detail;
 }
 
-extension on ByteBuffer {
+extension on Uint8List {
   String format() {
-    final view = asUint8List();
     var str = '';
-    for (var num in view) {
+    for (var num in this) {
       str += '0x${num.toRadixString(16).padLeft(2, '0')} ';
     }
     return str.substring(0, str.length - 1);
@@ -67,10 +66,10 @@ extension on ByteBuffer {
 Future<void> sendMessageAsync(
     Logger logger,
     String transportName,
-    HTTPClient httpClient,
+    HttpClient httpClient,
     String url,
-    dynamic Function() accessTokenFactory,
-    dynamic content,
+    Object Function() accessTokenFactory,
+    Object content,
     bool logMessageContent,
     bool withCredentials,
     Map<String, String> defaultHeaders) async {
@@ -90,8 +89,8 @@ Future<void> sendMessageAsync(
   logger.log(LogLevel.trace,
       '($transportName transport) sending data. ${getDataDetail(content, logMessageContent)}.');
 
-  final responseType = content is ByteBuffer ? 'arraybuffer' : 'text';
-  final options = HTTPRequest(
+  final responseType = content is Uint8List ? 'arraybuffer' : 'text';
+  final options = HttpRequest(
       content: content,
       headers: headers,
       responseType: responseType,
@@ -102,7 +101,7 @@ Future<void> sendMessageAsync(
       '($transportName transport) request complete. Response status: ${response.statusCode}.');
 }
 
-Logger createLogger(dynamic logger) {
+Logger createLogger(Object logger) {
   if (logger == null) {
     return ConsoleLogger(LogLevel.information);
   }
@@ -137,23 +136,23 @@ class SubjectSubscription<T> implements Subscription<T> {
 }
 
 abstract class Console {
-  void error(dynamic message);
-  void warn(dynamic message);
-  void info(dynamic message);
-  void log(dynamic message);
+  void error(Object message);
+  void warn(Object message);
+  void info(Object message);
+  void log(Object message);
 
   factory Console() => _Console();
 }
 
 class _Console implements Console {
   @override
-  void error(dynamic message) => utils.error(message);
+  void error(Object message) => utils.error(message);
   @override
-  void warn(dynamic message) => utils.warn(message);
+  void warn(Object message) => utils.warn(message);
   @override
-  void info(dynamic message) => utils.info(message);
+  void info(Object message) => utils.info(message);
   @override
-  void log(dynamic message) => utils.log(message);
+  void log(Object message) => utils.log(message);
 }
 
 class ConsoleLogger implements Logger {
