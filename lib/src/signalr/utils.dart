@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:cure/core.dart';
+
 import 'http_client.dart';
 import 'logger.dart';
 import 'stream.dart';
@@ -33,8 +35,8 @@ class Arg {
 }
 
 class Platform {
-  static bool get isWeb => utils.isWeb;
-  static bool get isVM => utils.isVM;
+  static bool get isChromium => utils.isChromium;
+  static bool get isDartium => utils.isDartium;
 }
 
 String getDataDetail(Object data, bool includeContent) {
@@ -135,31 +137,11 @@ class SubjectSubscription<T> implements Subscription<T> {
   }
 }
 
-abstract class Console {
-  void error(Object message);
-  void warn(Object message);
-  void info(Object message);
-  void log(Object message);
-
-  factory Console() => _Console();
-}
-
-class _Console implements Console {
-  @override
-  void error(Object message) => utils.error(message);
-  @override
-  void warn(Object message) => utils.warn(message);
-  @override
-  void info(Object message) => utils.info(message);
-  @override
-  void log(Object message) => utils.log(message);
-}
-
 class ConsoleLogger implements Logger {
   Console outputConsole;
   final LogLevel _minimumLogLevel;
 
-  ConsoleLogger(this._minimumLogLevel) : outputConsole = Console();
+  ConsoleLogger(this._minimumLogLevel) : outputConsole = console;
 
   @override
   void log(LogLevel logLevel, String message) {

@@ -1,13 +1,14 @@
 name: cure
 description: >-
   A library for Dart developers which contains some useful tools and extensions: Signalr, MessagePack, CRC, HTTP, EventSource, WebSocket, etc.
-version: 0.0.4
+version: 0.0.5
 homepage: https://github.com/yanshouwang/cure
 
 environment:
   sdk: '>=2.8.1 <3.0.0'
 
 dependencies:
+  ansicolor: ^1.1.1
   pedantic: ^1.9.2
   string_scanner: ^1.0.5
   tuple: ^1.0.3

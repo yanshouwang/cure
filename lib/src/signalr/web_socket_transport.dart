@@ -49,7 +49,7 @@ class WebSocketTransport implements Transport {
     url = url.replaceFirst(from, 'ws');
     WebSocket ws;
     var opened = false;
-    if (Platform.isVM) {
+    if (Platform.isDartium) {
       final headers = <String, String>{};
       final userAgent = getUserAgentHeader();
       headers[userAgent.key] = userAgent.value;

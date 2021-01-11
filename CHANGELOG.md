@@ -1,3 +1,8 @@
+## 0.0.5 - 2021/01/11
+
+- Add Console with different colors
+- Fix MessagePack use toMessagePack() instead of toJSON() by default
+
 ## 0.0.4 - 2021/01/07
 
 - Add MessagePack

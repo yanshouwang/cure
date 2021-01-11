@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cure/core.dart';
 import 'package:cure/signalr.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';

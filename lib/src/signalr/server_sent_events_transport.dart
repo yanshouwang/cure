@@ -59,7 +59,7 @@ class ServerSentEventsTransport implements Transport {
     }
 
     EventSource eventSource;
-    if (Platform.isWeb) {
+    if (Platform.isChromium) {
       eventSource = _eventSourceConstructor(url);
     } else {
       final headers = <String, String>{};

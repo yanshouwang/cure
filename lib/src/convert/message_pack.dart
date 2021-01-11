@@ -943,7 +943,7 @@ class _MessagePackEncoder extends Converter<Object, Uint8List> {
 }
 
 // reuse JSON format by default.
-Object _defaultToEncodable(dynamic object) => object.toJSON();
+Object _defaultToEncodable(dynamic object) => object.toMessagePack();
 
 const DEFAULT_MAX_DEPTH = 100;
 const DEFAULT_INITIAL_SIZE = 2048;
