@@ -4,7 +4,7 @@ import 'dart:io' as dartium;
 
 import 'package:cure/core.dart';
 
-import 'exceptions.dart';
+import 'errors.dart';
 import 'http_client.dart';
 import 'logger.dart';
 
@@ -18,7 +18,7 @@ class _HttpClient extends HttpClient {
   @override
   Future<HttpResponse> sendAsync(HttpRequest request) async {
     // Check that abort was not signaled before calling send
-    if (request.abortSignal != null && request.abortSignal.aborted) {
+    if (request.abortSignal != null && request.abortSignal!.aborted) {
       throw AbortException();
     }
     if (request.method == null) {
@@ -28,18 +28,18 @@ class _HttpClient extends HttpClient {
       throw Exception('No url defined.');
     }
     final client = dartium.HttpClient();
-    Timer timer;
+    Timer? timer;
     try {
-      final url = Uri.parse(request.url);
-      final hcr = await client.openUrl(request.method, url);
+      final url = Uri.parse(request.url!);
+      final hcr = await client.openUrl(request.method!, url);
       if (request.abortSignal != null) {
-        request.abortSignal.onabort = () {
+        request.abortSignal!.onabort = () {
           final error = AbortException();
           hcr.abort(error);
         };
       }
       if (request.timeout != null) {
-        final duration = Duration(milliseconds: request.timeout);
+        final duration = Duration(milliseconds: request.timeout!);
         timer = Timer(duration, () {
           _logger.log(LogLevel.warning, 'Timeout from HTTP request');
           final error = TimeoutException();
@@ -49,7 +49,7 @@ class _HttpClient extends HttpClient {
       hcr.headers.set('X-Requested-With', 'XMLHttpRequest');
       // Explicitly setting the Content-Type header for React Native on Android platform.
       hcr.headers.set('Content-Type', 'text/plain;charset=UTF-8');
-      for (var entry in request.headers.entries) {
+      for (var entry in request.headers!.entries) {
         hcr.headers.set(entry.key, entry.value);
       }
       hcr.write(request.content);
@@ -71,14 +71,14 @@ class _HttpClient extends HttpClient {
         timer = null;
       }
       if (request.abortSignal != null) {
-        request.abortSignal.onabort = null;
+        request.abortSignal!.onabort = null;
       }
       client.close();
     }
   }
 
   Future<Object> _deserializeContentAsync(
-      dartium.HttpClientResponse response, String responseType) async {
+      dartium.HttpClientResponse response, String? responseType) async {
     Object content;
     switch (responseType) {
       case 'arraybuffer':
@@ -88,11 +88,10 @@ class _HttpClient extends HttpClient {
       case 'document':
       case 'json':
         throw Exception('$responseType is not supported.');
-        break;
       case 'text':
       default:
         final charset = response.headers.contentType?.charset;
-        final encoding = charset == null ? utf8 : Encoding.getByName(charset);
+        final encoding = charset == null ? utf8 : Encoding.getByName(charset)!;
         content = await encoding.decodeStream(response);
         break;
     }

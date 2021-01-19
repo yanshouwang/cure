@@ -4,23 +4,15 @@ import 'package:cure/core.dart';
 
 import 'http_client.dart';
 import 'logger.dart';
-import 'stream.dart';
 import 'utils_stub.dart'
     if (dart.library.html) 'utils_chromium.dart'
     if (dart.library.io) 'utils_dartium.dart' as utils;
-import 'subject.dart';
 
 /// The version of the Signalr client.
 const VERSION = '5.0.1';
 
 class Arg {
-  static void isRequired(Object val, String name) {
-    if (val == null) {
-      throw Exception("The '${name}' argument is required.");
-    }
-  }
-
-  static void isNotEmpty(String val, String name) {
+  static void isNotEmpty(String? val, String name) {
     final re = RegExp(r'^\s*$');
     if (val == null || re.hasMatch(val)) {
       throw Exception("The '${name}' argument should not be empty.");
@@ -39,7 +31,7 @@ class Platform {
   static bool get isDartium => utils.isDartium;
 }
 
-String getDataDetail(Object data, bool includeContent) {
+String getDataDetail(Object? data, bool includeContent) {
   var detail = '';
   if (data is Uint8List) {
     detail = 'Binary data of length ${data.lengthInBytes}';
@@ -70,23 +62,23 @@ Future<void> sendMessageAsync(
     String transportName,
     HttpClient httpClient,
     String url,
-    Object Function() accessTokenFactory,
+    String Function()? accessTokenBuilder,
     Object content,
     bool logMessageContent,
-    bool withCredentials,
-    Map<String, String> defaultHeaders) async {
-  final headers = <String, String>{};
-  if (accessTokenFactory != null) {
-    final token = await accessTokenFactory();
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
+    bool? withCredentials,
+    Map<String, String>? headers) async {
+  final combine = <String, String>{};
+  final token = await accessTokenBuilder?.call();
+  if (token != null) {
+    combine['Authorization'] = 'Bearer $token';
   }
 
   final userAgent = getUserAgentHeader();
-  headers[userAgent.key] = userAgent.value;
+  combine[userAgent.key] = userAgent.value;
 
-  headers.addAll(defaultHeaders);
+  if (headers != null) {
+    combine.addAll(headers);
+  }
 
   logger.log(LogLevel.trace,
       '($transportName transport) sending data. ${getDataDetail(content, logMessageContent)}.');
@@ -94,7 +86,7 @@ Future<void> sendMessageAsync(
   final responseType = content is Uint8List ? 'arraybuffer' : 'text';
   final options = HttpRequest(
       content: content,
-      headers: headers,
+      headers: combine,
       responseType: responseType,
       withCredentials: withCredentials);
   final response = await httpClient.postAsync(url, options);
@@ -103,7 +95,7 @@ Future<void> sendMessageAsync(
       '($transportName transport) request complete. Response status: ${response.statusCode}.');
 }
 
-Logger createLogger(Object logger) {
+Logger createLogger(Object? logger) {
   if (logger == null) {
     return ConsoleLogger(LogLevel.information);
   }
@@ -116,36 +108,15 @@ Logger createLogger(Object logger) {
   throw Exception('Invalid logger type: ${logger.runtimeType}');
 }
 
-class SubjectSubscription<T> implements Subscription<T> {
-  final Subject<T> _subject;
-  final StreamSubscriber<T> _observer;
-
-  SubjectSubscription(this._subject, this._observer);
-
-  @override
-  void dispose() {
-    final index = _subject.observers.indexOf(_observer);
-    if (index > -1) {
-      _subject.observers.removeAt(index);
-    }
-
-    if (_subject.observers.isEmpty && _subject.cancelCallback != null) {
-      try {
-        _subject.cancelCallback();
-      } catch (_) {}
-    }
-  }
-}
-
 class ConsoleLogger implements Logger {
   Console outputConsole;
-  final LogLevel _minimumLogLevel;
+  final LogLevel? _minimumLogLevel;
 
   ConsoleLogger(this._minimumLogLevel) : outputConsole = console;
 
   @override
   void log(LogLevel logLevel, String message) {
-    if (logLevel.index >= _minimumLogLevel.index) {
+    if (logLevel.index >= _minimumLogLevel!.index) {
       final object =
           '[${DateTime.now().toIso8601String()}] $logLevel: $message';
       switch (logLevel) {
@@ -180,13 +151,13 @@ String constructUserAgent(
     String version, String os, String runtime, String runtimeVersion) {
   // Microsoft SignalR/[Version] ([Detailed Version]; [Operating System]; [Runtime]; [Runtime Version])
   final majorAndMinor = version.split('.');
-  if (os == null || os.isEmpty) {
+  if (os.isEmpty) {
     os = 'Unknown OS';
   }
-  if (runtime == null || runtime.isEmpty) {
+  if (runtime.isEmpty) {
     runtime = 'Unknown Runtime';
   }
-  if (runtimeVersion == null || runtimeVersion.isEmpty) {
+  if (runtimeVersion.isEmpty) {
     runtimeVersion = 'Unknown Runtime Version';
   }
   var userAgent =

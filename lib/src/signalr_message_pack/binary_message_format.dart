@@ -49,7 +49,6 @@ abstract class BinaryMessageFormat {
       }
 
       if (uint8Array.lengthInBytes >= (offset + numBytes + size)) {
-        // IE does not support .slice() so use subarray
         result.add(
             uint8Array.sublist(offset + numBytes, offset + numBytes + size));
       } else {

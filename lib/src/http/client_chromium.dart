@@ -5,7 +5,7 @@ import 'package:pedantic/pedantic.dart';
 
 import 'base_client.dart';
 import 'client.dart';
-import 'exceptions.dart';
+import 'errors.dart';
 import 'request.dart';
 import 'response.dart';
 
@@ -36,7 +36,7 @@ class _Client extends BaseClient {
 
     unawaited(xhr.onLoad.first.then((_) {
       final response = Response(
-          xhr.status, xhr.statusText, xhr.response, xhr.responseHeaders);
+          xhr.status!, xhr.statusText, xhr.response, xhr.responseHeaders);
       completer.complete(response);
     }));
 

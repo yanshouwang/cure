@@ -2,8 +2,8 @@
 ///
 /// [T] The type of the items being sent by the server.
 abstract class StreamSubscriber<T> {
-  /// A boolean that will be set by the [StreamResult] when the stream is closed.
-  bool closed;
+  /// A boolean that will be set by the [Stream] when the stream is closed.
+  bool? closed;
 
   /// Called by the framework when a new item is available.
   void next(T value);
@@ -11,7 +11,7 @@ abstract class StreamSubscriber<T> {
   /// Called by the framework when an error has occurred.
   ///
   /// After this method is called, no additional methods on the [StreamSubscriber] will be called.
-  void error(Exception error);
+  void error(Object error);
 
   /// Called by the framework when the end of the stream is reached.
   ///
@@ -19,19 +19,19 @@ abstract class StreamSubscriber<T> {
   void complete();
 
   factory StreamSubscriber(
-          {void Function(T value) onnext,
-          void Function(Exception error) onerror,
-          void Function() oncomplete}) =>
+          {void Function(T value)? onnext,
+          void Function(dynamic error)? onerror,
+          void Function()? oncomplete}) =>
       _StreamSubScriber(onnext, onerror, oncomplete);
 }
 
 class _StreamSubScriber<T> implements StreamSubscriber<T> {
   @override
-  bool closed;
+  bool? closed;
 
-  void Function(T value) onnext;
-  void Function(Exception error) onerror;
-  void Function() oncomplete;
+  void Function(T value)? onnext;
+  void Function(Object error)? onerror;
+  void Function()? oncomplete;
 
   _StreamSubScriber(this.onnext, this.onerror, this.oncomplete);
 
@@ -41,7 +41,7 @@ class _StreamSubScriber<T> implements StreamSubscriber<T> {
   }
 
   @override
-  void error(Exception error) {
+  void error(dynamic error) {
     onerror?.call(error);
   }
 
@@ -54,7 +54,7 @@ class _StreamSubScriber<T> implements StreamSubscriber<T> {
 /// Defines the result of a streaming hub method.
 ///
 /// [T] The type of the items being sent by the server.
-abstract class StreamResult<T> {
+abstract class Stream<T> {
   /// Attaches a [StreamSubscriber], which will be invoked when new items are available from the stream.
   ///
   /// [observer] The subscriber to attach.

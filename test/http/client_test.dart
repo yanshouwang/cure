@@ -11,7 +11,7 @@ void main() {
   test('# HEAD', () async {
     final client = Client();
     try {
-      final response = await client.headAsync(serverUrl);
+      final response = await client.headAsync(serverURL);
       expect(response.statusCode, 200);
       expect(response.content, '');
     } finally {
@@ -27,7 +27,7 @@ void main() {
         'X-Other-Header': 'Other Value',
         'User-Agent': 'Dart',
       };
-      final response = await client.getAsync(serverUrl, headers);
+      final response = await client.getAsync(serverURL, headers);
       expect(response.statusCode, 200);
       final headers1 = {
         'content-length': ['0'],
@@ -36,7 +36,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value'],
       };
-      final actual = json.decode(response.content);
+      final actual = json.decode(response.content!);
       final matcher = {
         'method': 'GET',
         'path': '/',
@@ -58,7 +58,7 @@ void main() {
       };
       final content = 'CONTENT';
       final response =
-          await client.postAsync(serverUrl, content, ContentType.text, headers);
+          await client.postAsync(serverURL, content, ContentType.text, headers);
       expect(response.statusCode, 200);
       final headers1 = {
         'content-type': ['text/plain; charset=utf-8'],
@@ -68,7 +68,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = json.decode(response.content);
+      final actual = json.decode(response.content!);
       final matcher = {
         'method': 'POST',
         'path': '/',
@@ -91,7 +91,7 @@ void main() {
       };
       final content = 'CONTENT';
       final response =
-          await client.putAsync(serverUrl, content, ContentType.text, headers);
+          await client.putAsync(serverURL, content, ContentType.text, headers);
       expect(response.statusCode, 200);
       final headers1 = {
         'content-type': ['text/plain; charset=utf-8'],
@@ -101,7 +101,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = json.decode(response.content);
+      final actual = json.decode(response.content!);
       final matcher = {
         'method': 'PUT',
         'path': '/',
@@ -124,7 +124,7 @@ void main() {
       };
       final content = 'CONTENT';
       final response = await client.patchAsync(
-          serverUrl, content, ContentType.text, headers);
+          serverURL, content, ContentType.text, headers);
       expect(response.statusCode, 200);
       final headers1 = {
         'content-type': ['text/plain; charset=utf-8'],
@@ -134,7 +134,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value']
       };
-      final actual = json.decode(response.content);
+      final actual = json.decode(response.content!);
       final matcher = {
         'method': 'PATCH',
         'path': '/',
@@ -155,7 +155,7 @@ void main() {
         'X-Other-Header': 'Other Value',
         'User-Agent': 'Dart',
       };
-      final response = await client.deleteAsync(serverUrl, headers);
+      final response = await client.deleteAsync(serverURL, headers);
       expect(response.statusCode, 200);
       final headers1 = {
         'content-length': ['0'],
@@ -164,7 +164,7 @@ void main() {
         'x-random-header': ['Value'],
         'x-other-header': ['Other Value'],
       };
-      final actual = json.decode(response.content);
+      final actual = json.decode(response.content!);
       final matcher = {
         'method': 'DELETE',
         'path': '/',

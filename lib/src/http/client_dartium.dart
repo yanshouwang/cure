@@ -4,16 +4,16 @@ import 'dart:io';
 
 import 'base_client.dart';
 import 'client.dart';
-import 'exceptions.dart';
+import 'errors.dart';
 import 'response.dart';
 import 'request.dart';
 
-Client createClient() => _VMClient();
+Client createClient() => _Client();
 
-class _VMClient extends BaseClient {
+class _Client extends BaseClient {
   final HttpClient _client;
 
-  _VMClient() : _client = HttpClient();
+  _Client() : _client = HttpClient();
 
   @override
   Future<Response> sendAsync(Request request) async {
@@ -35,7 +35,7 @@ class _VMClient extends BaseClient {
         throw ClientException(e.message, e.uri);
       });
       final charset = response.headers.contentType?.charset;
-      final encoding = charset == null ? utf8 : Encoding.getByName(charset);
+      final encoding = charset == null ? utf8 : Encoding.getByName(charset)!;
       final content = await encoding.decodeStream(stream);
       return Response(
           response.statusCode, response.reasonPhrase, content, headers);

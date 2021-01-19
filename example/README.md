@@ -9,7 +9,7 @@ void main() {
   var object = Timestamp.utc(1970);
   final data = messagePack.encode(object);
   print(data); // [214, 255, 0, 0, 0, 0]
-  object = messagePack.decode(data);
+  object = messagePack.decode(data) as Timestamp;
   print(object); // Timestamp(0, 0)
 }
 
@@ -58,10 +58,11 @@ void main() async {
 import 'package:cure/signalr.dart';
 
 void main() async {
-  final connection = HubConnectionBuilder()
-      .withURL('url')
-      //.withHubProtocol(MessagePackHubProtocol())
-      .build();
+  final builder = HubConnectionBuilder()
+    ..url = 'url'
+    ..logLevel = LogLevel.information
+    ..reconnect = true;
+  final connection = builder.build();
   connection.on('send', (args) => print(args));
   await connection.startAsync();
   await connection.sendAsync('send', ['Hello', 123]);

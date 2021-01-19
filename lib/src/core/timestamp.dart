@@ -78,12 +78,12 @@ class Timestamp implements Comparable<Timestamp> {
       ).timestamp;
 
   /// Create a [Timestamp] from [DateTime.parse]
-  factory Timestamp.parse(String formattedString) =>
+  static Timestamp parse(String formattedString) =>
       DateTime.parse(formattedString).timestamp;
 
   /// Create a [Timestamp] from [DateTime.tryParse]
-  factory Timestamp.tryParse(String formattedString) =>
-      DateTime.tryParse(formattedString).timestamp;
+  static Timestamp? tryParse(String formattedString) =>
+      DateTime.tryParse(formattedString)?.timestamp;
 
   @override
   int compareTo(Timestamp other) {

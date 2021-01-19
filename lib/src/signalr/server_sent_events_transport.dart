@@ -4,47 +4,41 @@ import 'package:cure/sse.dart';
 
 import 'http_client.dart';
 import 'logger.dart';
+import 'polyfills.dart';
 import 'transport.dart';
 import 'utils.dart';
 
 class ServerSentEventsTransport implements Transport {
   final HttpClient _httpClient;
-  final Object Function() _accessTokenFactory;
+  final String Function()? _accessTokenBuilder;
   final Logger _logger;
   final bool _logMessageContent;
-  final EventSource Function(String url,
-      {Map<String, String> headers,
-      bool withCredentials}) _eventSourceConstructor;
+  final EventSourceConstructor _eventSourceConstructor;
   final bool _withCredentials;
   final Map<String, String> _headers;
-  EventSource _eventSource;
-  String url;
+  EventSource? _eventSource;
+  String? url;
 
   @override
-  void Function(Exception error) onclose;
+  void Function(Object data)? onreceive;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object? error)? onclose;
 
   ServerSentEventsTransport(
       this._httpClient,
-      this._accessTokenFactory,
+      this._accessTokenBuilder,
       this._logger,
       this._logMessageContent,
       this._eventSourceConstructor,
       this._withCredentials,
-      this._headers)
-      : onreceive = null,
-        onclose = null;
+      this._headers);
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) async {
-    Arg.isRequired(url, 'url');
-    Arg.isRequired(transferFormat, 'transferFormat');
-
     _logger.log(LogLevel.trace, '(SSE transport) Connecting.');
     // set url before accessTokenFactory because this.url is only for send and we set the auth header instead of the query string for send
     this.url = url;
-    final token = await _accessTokenFactory?.call();
+    final token = _accessTokenBuilder?.call();
     if (token != null) {
       url += (url.contains('?') ? '&' : '?') +
           'access_token=${Uri.encodeComponent(token)}';
@@ -60,22 +54,19 @@ class ServerSentEventsTransport implements Transport {
 
     EventSource eventSource;
     if (Platform.isChromium) {
-      eventSource = _eventSourceConstructor(url);
+      eventSource = _eventSourceConstructor(url, null, null);
     } else {
       final headers = <String, String>{};
       final cookies = _httpClient.getCookieString(url);
-      if (cookies != null && cookies.isNotEmpty) {
+      if (cookies.isNotEmpty) {
         headers['Cookie'] = cookies;
       }
       final userAgent = getUserAgentHeader();
       headers[userAgent.key] = userAgent.value;
-      if (_headers != null) {
-        for (var header in _headers.entries) {
-          headers[header.key] = header.value;
-        }
+      for (var header in _headers.entries) {
+        headers[header.key] = header.value;
       }
-      eventSource = _eventSourceConstructor(url,
-          headers: headers, withCredentials: _withCredentials);
+      eventSource = _eventSourceConstructor(url, headers, _withCredentials);
     }
 
     try {
@@ -84,7 +75,7 @@ class ServerSentEventsTransport implements Transport {
           try {
             _logger.log(LogLevel.trace,
                 '(SSE transport) data received. ${getDataDetail(data, _logMessageContent)}.');
-            onreceive.call(data);
+            onreceive!.call(data!);
           } catch (error) {
             _close(error);
           }
@@ -93,7 +84,7 @@ class ServerSentEventsTransport implements Transport {
       eventSource.onerror = (error) {
         error ??= Exception('Error occurred');
         if (opened) {
-          _close(error);
+          _close(error as Exception?);
         } else {
           completer.completeError(error);
         }
@@ -112,7 +103,7 @@ class ServerSentEventsTransport implements Transport {
   }
 
   @override
-  Future<void> sendAsync(data) {
+  Future<void> sendAsync(Object data) {
     if (_eventSource == null) {
       final error = Exception('Cannot send until the transport is connected');
       return Future.error(error);
@@ -121,8 +112,8 @@ class ServerSentEventsTransport implements Transport {
         _logger,
         'SSE',
         _httpClient,
-        url,
-        _accessTokenFactory,
+        url!,
+        _accessTokenBuilder,
         data,
         _logMessageContent,
         _withCredentials,
@@ -135,9 +126,9 @@ class ServerSentEventsTransport implements Transport {
     return Future.value();
   }
 
-  void _close([Exception error]) {
+  void _close([Object? error]) {
     if (_eventSource != null) {
-      _eventSource.close();
+      _eventSource!.close();
       _eventSource = null;
       onclose?.call(error);
     }

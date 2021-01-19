@@ -1,4 +1,4 @@
-class TextMessageFormat {
+abstract class TextMessageFormat {
   static const recordSeparatorCode = 0x1e;
   static final recordSeparator = String.fromCharCode(recordSeparatorCode);
 

@@ -1,13 +1,16 @@
 import 'dart:async';
 
 import 'package:cure/signalr.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:pedantic/pedantic.dart';
 import 'package:test/test.dart';
 
 import 'common.dart';
+import 'http_connection_reconnect_test.mocks.dart';
 import 'test_connection.dart';
 
+@GenerateMocks([RetryPolicy])
 void main() {
   test('# is not enabled by default', () async {
     await VerifyLogger.runAsync((logger) async {
@@ -26,7 +29,7 @@ void main() {
 
       // Typically this would be called by the transport
       final error = Exception('Connection lost');
-      connection.onclose.call(error);
+      connection.onclose!.call(error);
 
       await closeCompleter.future;
 
@@ -42,7 +45,7 @@ void main() {
 
       var lastRetryCount = -1;
       var lastElapsedMs = -1;
-      Exception retryReason;
+      Object? retryReason;
       var onreconnectingCount = 0;
       var onreconnectedCount = 0;
       var closeCount = 0;
@@ -81,7 +84,7 @@ void main() {
       final continueRetryingError = Exception('Reconnect attempt failed');
 
       // Typically this would be called by the transport
-      connection.onclose(oncloseError);
+      connection.onclose!(oncloseError);
 
       await nextRetryDelayCalledCompleter.future;
       nextRetryDelayCalledCompleter = Completer<void>();
@@ -135,7 +138,7 @@ void main() {
 
       var lastRetryCount = -1;
       var lastElapsedMs = -1;
-      Exception retryReason;
+      Object? retryReason;
       var onreconnectingCount = 0;
       var onreconnectedCount = 0;
       var closeCount = 0;
@@ -171,7 +174,7 @@ void main() {
       connection.startFuture = () => throw startError;
 
       // Typically this would be called by the transport
-      connection.onclose(oncloseError);
+      connection.onclose!(oncloseError);
 
       await nextRetryDelayCalledCompleter.future;
       nextRetryDelayCalledCompleter = Completer<void>();
@@ -203,7 +206,7 @@ void main() {
 
       var lastRetryCount = -1;
       var lastElapsedMs = -1;
-      Exception retryReason;
+      Object? retryReason;
       var onreconnectingCount = 0;
       var onreconnectedCount = 0;
       var closeCount = 0;
@@ -236,7 +239,7 @@ void main() {
       final oncloseError2 = Exception('Connection lost 2');
 
       // Typically this would be called by the transport
-      connection.onclose(oncloseError);
+      connection.onclose!(oncloseError);
 
       await nextRetryDelayCalledCompleter.future;
       nextRetryDelayCalledCompleter = Completer<void>();
@@ -259,7 +262,7 @@ void main() {
       expect(onreconnectedCount, 1);
       expect(closeCount, 0);
 
-      connection.onclose(oncloseError2);
+      connection.onclose!(oncloseError2);
 
       await nextRetryDelayCalledCompleter.future;
 
@@ -302,7 +305,7 @@ void main() {
       final connection = TestConnection();
       // Note the [] parameter to the DefaultReconnectPolicy.
       final hubConnection = HubConnection.create(
-          connection, logger, JsonHubProtocol(), DefaultReconnectPolicy([]));
+          connection, logger, JsonHubProtocol(), RetryPolicy([]));
 
       hubConnection.onreconnecting((_) => onreconnectingCount++);
 
@@ -316,7 +319,7 @@ void main() {
       await hubConnection.startAsync();
 
       // Typically this would be called by the transport
-      connection.onclose(Exception('Connection lost'));
+      connection.onclose!(Exception('Connection lost'));
 
       await closeCompleter.future;
 
@@ -337,7 +340,7 @@ void main() {
       // Disable autoHandshake in TestConnection
       final connection = TestConnection(false);
       final hubConnection = HubConnection.create(
-          connection, logger, JsonHubProtocol(), DefaultReconnectPolicy());
+          connection, logger, JsonHubProtocol(), RetryPolicy());
 
       hubConnection.onreconnecting((_) => onreconnectingCount++);
 
@@ -350,7 +353,7 @@ void main() {
       expect(hubConnection.state, HubConnectionState.connecting);
 
       // Typically this would be called by the transport
-      connection.onclose(Exception('Connection lost'));
+      connection.onclose!(Exception('Connection lost'));
 
       final m = predicate((e) => '$e' == 'Exception: Connection lost');
       final matcher = throwsA(m);
@@ -369,7 +372,7 @@ void main() {
       var nextRetryDelayCalledCompleter = Completer<void>();
 
       var lastRetryCount = 0;
-      Exception retryReason;
+      Object? retryReason;
       var onreconnectingCount = 0;
       var onreconnectedCount = 0;
       var closeCount = 0;
@@ -411,7 +414,7 @@ void main() {
       final oncloseError2 = Exception('Connection lost 2');
 
       // Typically this would be called by the transport
-      connection.onclose(oncloseError);
+      connection.onclose!(oncloseError);
 
       await nextRetryDelayCalledCompleter.future;
       nextRetryDelayCalledCompleter = Completer<void>();
@@ -427,7 +430,7 @@ void main() {
       replacedStartCalledCompleter = Completer<void>();
 
       // Fail underlying connection during reconnect during handshake
-      connection.onclose(oncloseError2);
+      connection.onclose!(oncloseError2);
 
       await nextRetryDelayCalledCompleter.future;
 
@@ -504,7 +507,7 @@ void main() {
 
       // Typically this would be called by the transport
       final error = Exception('Connection lost');
-      connection.onclose(error);
+      connection.onclose!(error);
 
       await nextRetryDelayCalledCompleter.future;
       nextRetryDelayCalledCompleter = Completer<void>();
@@ -561,7 +564,7 @@ void main() {
 
       final connection = TestConnection();
       final hubConnection = HubConnection.create(
-          connection, logger, JsonHubProtocol(), DefaultReconnectPolicy([0]));
+          connection, logger, JsonHubProtocol(), RetryPolicy([0]));
 
       hubConnection.onreconnecting((_) => onreconnectingCount++);
 
@@ -572,7 +575,7 @@ void main() {
       await hubConnection.startAsync();
 
       final stopCalledCompleter = Completer<void>();
-      Future<void> stopFuture;
+      Future<void>? stopFuture;
 
       connection.startFuture = () {
         stopCalledCompleter.complete();
@@ -581,7 +584,7 @@ void main() {
       };
 
       // Typically this would be called by the transport
-      connection.onclose(Exception('Connection lost'));
+      connection.onclose!(Exception('Connection lost'));
 
       await stopCalledCompleter.future;
       await stopFuture;
@@ -631,7 +634,7 @@ void main() {
       };
 
       // Typically this would be called by the transport
-      connection.onclose(Exception('Connection lost'));
+      connection.onclose!(Exception('Connection lost'));
 
       await nextRetryDelayCalledCompleter.future;
 
@@ -681,7 +684,7 @@ void main() {
       await hubConnection.startAsync();
 
       // Typically this would be called by the transport
-      connection.onclose(Exception('Connection lost'));
+      connection.onclose!(Exception('Connection lost'));
 
       await nextRetryDelayCalledCompleter.future;
 
@@ -704,10 +707,10 @@ void main() {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
       final hubConnection = HubConnection.create(
-          connection, logger, JsonHubProtocol(), DefaultReconnectPolicy());
+          connection, logger, JsonHubProtocol(), RetryPolicy());
       try {
         var isReconnecting = false;
-        Exception reconnectingError;
+        Object? reconnectingError;
 
         hubConnection.onreconnecting((e) {
           isReconnecting = true;
@@ -736,10 +739,10 @@ void main() {
     await VerifyLogger.runAsync((logger) async {
       final connection = TestConnection();
       final hubConnection = HubConnection.create(
-          connection, logger, JsonHubProtocol(), DefaultReconnectPolicy());
+          connection, logger, JsonHubProtocol(), RetryPolicy());
       try {
         var isClosed = false;
-        Exception closeError;
+        Object? closeError;
         hubConnection.onclose((e) {
           isClosed = true;
           closeError = e;
@@ -761,5 +764,3 @@ void main() {
     });
   });
 }
-
-class MockRetryPolicy extends Mock implements RetryPolicy {}

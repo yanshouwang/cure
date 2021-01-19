@@ -1,5 +1,5 @@
-import 'abort_controller.dart';
-import 'exceptions.dart';
+import 'abort_signal.dart';
+import 'errors.dart';
 import 'http_client.dart';
 import 'logger.dart';
 import 'transport.dart';
@@ -7,38 +7,33 @@ import 'utils.dart';
 
 class LongPollingTransport implements Transport {
   final HttpClient _httpClient;
-  final Object Function() _accessTokenFactory;
+  final String Function()? _accessTokenBuilder;
   final Logger _logger;
   final bool _logMessageContent;
   final bool _withCredentials;
   final AbortController _pollAbort;
   final Map<String, String> _headers;
 
-  String _url;
+  String? _url;
   bool _running;
-  Future<void> _receiving;
-  Exception _closeError;
+  Future<void>? _receiving;
+  Object? _closeError;
 
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
 
   // This is an internal type, not exported from 'index' so this is really just internal.
   bool get pollAborted => _pollAbort.aborted;
 
-  LongPollingTransport(this._httpClient, this._accessTokenFactory, this._logger,
+  LongPollingTransport(this._httpClient, this._accessTokenBuilder, this._logger,
       this._logMessageContent, this._withCredentials, this._headers)
       : _pollAbort = AbortController(),
-        _running = false,
-        onreceive = null,
-        onclose = null;
+        _running = false;
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) async {
-    Arg.isRequired(url, 'url');
-    Arg.isRequired(transferFormat, 'transferFormat');
-
     _url = url;
     _logger.log(LogLevel.trace, '(LongPolling transport) Connecting.');
 
@@ -46,10 +41,8 @@ class LongPollingTransport implements Transport {
     final userAgent = getUserAgentHeader();
     headers[userAgent.key] = userAgent.value;
 
-    if (_headers != null) {
-      for (var header in _headers.entries) {
-        headers[header.key] = header.value;
-      }
+    for (var header in _headers.entries) {
+      headers[header.key] = header.value;
     }
 
     final pollOptions = HttpRequest(
@@ -62,7 +55,7 @@ class LongPollingTransport implements Transport {
       pollOptions.responseType = 'arraybuffer';
     }
 
-    final token = await _getAccessTokenAsync();
+    final token = _accessTokenBuilder?.call();
     _updateHeaderToken(pollOptions, token);
 
     // Make initial long polling request
@@ -80,11 +73,11 @@ class LongPollingTransport implements Transport {
     } else {
       _running = true;
     }
-    _receiving = _pollAsync(_url, pollOptions);
+    _receiving = _pollAsync(_url!, pollOptions);
   }
 
   @override
-  Future<void> sendAsync(data) {
+  Future<void> sendAsync(Object data) {
     if (!_running) {
       final error = Exception('Cannot send until the transport is connected');
       return Future.error(error);
@@ -93,8 +86,8 @@ class LongPollingTransport implements Transport {
         _logger,
         'LongPolling',
         _httpClient,
-        _url,
-        _accessTokenFactory,
+        _url!,
+        _accessTokenBuilder,
         data,
         _logMessageContent,
         _withCredentials,
@@ -120,17 +113,15 @@ class LongPollingTransport implements Transport {
       final userAgent = getUserAgentHeader();
       headers[userAgent.key] = userAgent.value;
 
-      if (_headers != null) {
-        for (var header in _headers.entries) {
-          headers[header.key] = header.value;
-        }
+      for (var header in _headers.entries) {
+        headers[header.key] = header.value;
       }
 
       final deleteOptions =
           HttpRequest(headers: headers, withCredentials: _withCredentials);
-      final token = await _getAccessTokenAsync();
+      final token = _accessTokenBuilder?.call();
       _updateHeaderToken(deleteOptions, token);
-      await _httpClient.deleteAsync(_url, deleteOptions);
+      await _httpClient.deleteAsync(_url!, deleteOptions);
 
       _logger.log(
           LogLevel.trace, '(LongPolling transport) DELETE request sent.');
@@ -143,18 +134,14 @@ class LongPollingTransport implements Transport {
     }
   }
 
-  Future<String> _getAccessTokenAsync() async {
-    return await _accessTokenFactory?.call();
-  }
-
-  void _updateHeaderToken(HttpRequest request, String token) {
+  void _updateHeaderToken(HttpRequest request, String? token) {
     request.headers ??= {};
     if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
+      request.headers!['Authorization'] = 'Bearer $token';
       return;
     }
-    if (request.headers['Authorization'] != null) {
-      request.headers.remove('Authorization');
+    if (request.headers!['Authorization'] != null) {
+      request.headers!.remove('Authorization');
     }
   }
 
@@ -162,7 +149,7 @@ class LongPollingTransport implements Transport {
     try {
       while (_running) {
         // We have to get the access token on each poll, in case it changes
-        final token = await _getAccessTokenAsync();
+        final token = _accessTokenBuilder?.call();
         _updateHeaderToken(pollOptions, token);
 
         try {
@@ -186,7 +173,7 @@ class LongPollingTransport implements Transport {
             if (response.content != null) {
               _logger.log(LogLevel.trace,
                   '(LongPolling transport) data received. ${getDataDetail(response.content, _logMessageContent)}.');
-              onreceive?.call(response.content);
+              onreceive?.call(response.content!);
             } else {
               // This is another way timeout manifest.
               _logger.log(LogLevel.trace,
@@ -197,7 +184,7 @@ class LongPollingTransport implements Transport {
           if (!_running) {
             // Log but disregard errors that occur after stopping
             _logger.log(LogLevel.trace,
-                '(LongPolling transport) Poll errored after shutdown: ${e.message}');
+                '(LongPolling transport) Poll errored after shutdown: $e');
           } else {
             if (e is TimeoutException) {
               // Ignore timeouts and reissue the poll.
@@ -229,7 +216,7 @@ class LongPollingTransport implements Transport {
         logMessage += ' Error: $_closeError';
       }
       _logger.log(LogLevel.trace, logMessage);
-      onclose(_closeError);
+      onclose!(_closeError);
     }
   }
 }

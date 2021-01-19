@@ -20,19 +20,19 @@ abstract class EventSource {
   int get readyState;
 
   /// onopen
-  void Function() onopen;
+  void Function()? onopen;
 
   /// onerror
-  void Function(Exception error) onerror;
+  void Function(Object? error)? onerror;
 
   /// ondata
-  void Function(String event, String data) ondata;
+  void Function(String event, String? data)? ondata;
 
   /// Close the EventSource.
   void close();
 
   /// Connect to the [url].
   factory EventSource.connect(String url,
-          {Map<String, String> headers, bool withCredentials}) =>
+          {Map<String, String>? headers, bool? withCredentials}) =>
       connectEventSource(url);
 }

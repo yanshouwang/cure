@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:cure/convert.dart';
 
-HttpServer _server;
+HttpServer? _server;
 
-String get serverUrl => 'http://localhost:${_server.port}';
+String get serverURL => 'http://localhost:${_server!.port}';
 
 Future<void> startServer() async {
   _server = await HttpServer.bind('localhost', 0)
@@ -25,7 +25,7 @@ Future<void> startServer() async {
             final n = int.parse(request.uri.query);
             response
               ..statusCode = 302
-              ..headers.set('location', '$serverUrl/loop?${n + 1}')
+              ..headers.set('location', '$serverURL/loop?${n + 1}')
               ..contentLength = 0;
             await response.close();
             break;
@@ -34,7 +34,7 @@ Future<void> startServer() async {
           {
             response
               ..statusCode = 302
-              ..headers.set('location', '$serverUrl/')
+              ..headers.set('location', '$serverURL/')
               ..contentLength = 0;
             await response.close();
             break;
@@ -53,8 +53,7 @@ Future<void> startServer() async {
             response.headers.contentType = ContentType.json;
             response.headers.set('single', 'value');
             final charset = request.headers.contentType?.charset;
-            final encoding =
-                charset == null ? utf8 : Encoding.getByName(charset);
+            final encoding = Encoding.getByName(charset) ?? utf8;
             final content = await encoding.decodeStream(request);
             final headers = {};
             request.headers.forEach((key, values) {
@@ -86,7 +85,7 @@ Future<void> startServer() async {
 
 void stopServer() {
   if (_server != null) {
-    _server.close();
+    _server!.close();
     _server = null;
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/long_polling_transport.dart';
+import 'package:cure/src/signalr/utils.dart';
 import 'package:test/test.dart';
 
 import 'common.dart';
@@ -19,10 +21,10 @@ void main() {
         } else {
           // Turn 'onabort' into a promise.
           final abort = Completer<void>();
-          if (r.abortSignal.aborted) {
+          if (r.abortSignal!.aborted) {
             abort.complete();
           } else {
-            r.abortSignal.onabort = () => abort.complete();
+            r.abortSignal!.onabort = () => abort.complete();
           }
           await abort;
 
@@ -113,22 +115,22 @@ void main() {
   test('# user agent header set on sends and polls', () async {
     await VerifyLogger.runAsync((logger) async {
       var firstPoll = true;
-      var firstPollUserAgent = '';
-      var secondPollUserAgent = '';
-      var deleteUserAgent = '';
+      String? firstPollUserAgent = '';
+      String? secondPollUserAgent = '';
+      String? deleteUserAgent = '';
       final pollingCompleter = Completer<void>();
       final httpClient = TestHttpClient().on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
-          firstPollUserAgent = r.headers['User-Agent'];
+          firstPollUserAgent = r.headers!['User-Agent'];
           return HttpResponse(200);
         } else {
-          secondPollUserAgent = r.headers['User-Agent'];
+          secondPollUserAgent = r.headers!['User-Agent'];
           await pollingCompleter.future;
           return HttpResponse(204);
         }
       }, 'GET').on((r, next) async {
-        deleteUserAgent = r.headers['User-Agent'];
+        deleteUserAgent = r.headers!['User-Agent'];
         return HttpResponse(202);
       }, 'DELETE');
 
@@ -156,12 +158,12 @@ void main() {
     await VerifyLogger.runAsync((logger) async {
       final headers = {'User-Agent': 'Custom Agent', 'X-HEADER': 'VALUE'};
       var firstPoll = true;
-      var firstPollUserAgent = '';
-      var firstUserHeader = '';
-      var secondPollUserAgent = '';
-      var secondUserHeader = '';
-      var deleteUserAgent = '';
-      var deleteUserHeader = '';
+      String? firstPollUserAgent = '';
+      String? firstUserHeader = '';
+      String? secondPollUserAgent = '';
+      String? secondUserHeader = '';
+      String? deleteUserAgent = '';
+      String? deleteUserHeader = '';
       final pollingCompleter = Completer<void>();
       final httpClient = TestHttpClient().on((r, next) async {
         expect(r.content, '{"message": "hello"}');
@@ -171,18 +173,18 @@ void main() {
       }, 'POST').on((r, next) async {
         if (firstPoll) {
           firstPoll = false;
-          firstPollUserAgent = r.headers['User-Agent'];
-          firstUserHeader = r.headers['X-HEADER'];
+          firstPollUserAgent = r.headers!['User-Agent'];
+          firstUserHeader = r.headers!['X-HEADER'];
           return HttpResponse(200);
         } else {
-          secondPollUserAgent = r.headers['User-Agent'];
-          secondUserHeader = r.headers['X-HEADER'];
+          secondPollUserAgent = r.headers!['User-Agent'];
+          secondUserHeader = r.headers!['X-HEADER'];
           await pollingCompleter.future;
           return HttpResponse(204);
         }
       }, 'GET').on((r, next) async {
-        deleteUserAgent = r.headers['User-Agent'];
-        deleteUserHeader = r.headers['X-HEADER'];
+        deleteUserAgent = r.headers!['User-Agent'];
+        deleteUserHeader = r.headers!['X-HEADER'];
         return HttpResponse(202);
       }, 'DELETE');
 

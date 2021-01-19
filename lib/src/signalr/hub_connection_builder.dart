@@ -1,4 +1,7 @@
-import 'default_reconnect_policy.dart';
+import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/transport.dart';
+import 'package:meta/meta.dart';
+
 import 'http_connection.dart';
 import 'http_connection_options.dart';
 import 'hub_connection.dart';
@@ -10,44 +13,51 @@ import 'utils.dart';
 
 /// A builder for configuring [HubConnection] instances.
 abstract class HubConnectionBuilder {
-  HubProtocol get protocol;
-  HttpConnectionOptions get httpConnectionOptions;
-  String get url;
-  Logger get logger;
-  RetryPolicy get reconnectPolicy;
+  @visibleForTesting
+  String? get $url;
+  @visibleForTesting
+  HttpConnectionOptions? get $httpConnectionOptions;
+  @visibleForTesting
+  Logger? get $logger;
+  @visibleForTesting
+  HubProtocol? get $protocol;
+  @visibleForTesting
+  RetryPolicy? get $reconnectPolicy;
 
-  /// Configures console logging for the [HubConnection].
-  ///
-  /// [logging] A [LogLevel], a string representing a [LogLevel], or an object implementing the [Logger] interface. See [the documentation for client logging configuration](https://docs.microsoft.com/aspnet/core/signalr/configuration#configure-logging) for more details.
-  ///
-  /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder configureLogging(Object logging);
+  /// The URL the connection will use.
+  set url(String value);
 
-  /// Configures the [HubConnection] to use HTTP-based transports to connect to the specified URL.
-  ///
-  /// [url] The URL the connection will use.
-  ///
-  /// [transportTypeOrOptions] The specific transport to use or an options object used to configure the connection.
-  ///
-  /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder withURL(String url, [Object transportTypeOrOptions]);
+  /// The specific transport to use.
+  set transportType(HttpTransportType value);
 
-  /// Configures the [HubConnection] to use the specified Hub Protocol.
-  ///
-  /// [protocol] The [HubProtocol] implementation to use.
-  ///
-  /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder withHubProtocol(HubProtocol protocol);
+  /// An options object used to configure the connection.
+  set httpConnectionOptions(HttpConnectionOptions value);
 
-  /// Configures the [HubConnection] to automatically attempt to reconnect if the connection is lost.
+  /// The minimum level of messages to log. Anything at this level, or a more severe level, will be logged.
+  set logLevel(LogLevel value);
+
+  /// An object implementing the [Logger] interface, which will be used to write all log messages.
+  set logger(Logger value);
+
+  /// The [HubProtocol] implementation to use.
+  set protocol(HubProtocol value);
+
+  /// Configures the HubConnection to automatically attempt to reconnect if the connection is lost.
+  /// By default, the client will wait 0, 2, 10 and 30 seconds respectively before trying up to 4
+  /// reconnect attempts.
   ///
-  /// [retryDelaysOrReconnectPolicy] An array containing the delays in milliseconds before trying each reconnect attempt or a [RetryPolicy] that controls the timing and number of reconnect attempts.
+  /// When [reconnectDelays] or [reconnectPolicy] was set, set this to true is unnecessary.
   ///
-  /// * The length of the array represents how many failed reconnect attempts it takes before the client will stop attempting to reconnect
-  ///
-  /// Returns the [HubConnectionBuilder] instance, for chaining.
-  HubConnectionBuilder withAutomaticReconnect(
-      [Object retryDelaysOrReconnectPolicy]);
+  /// Must called after [reconnectDelays] and [reconnectPolicy] when set to false.
+  set reconnect(bool value);
+
+  /// An array containing the delays in milliseconds before trying each reconnect attempt.
+  /// The length of the array represents how many failed reconnect attempts it takes before
+  /// the client will stop attempting to reconnect.
+  set reconnectDelays(List<int> value);
+
+  /// An [RetryPolicy] that controls the timing and number of reconnect attempts.
+  set reconnectPolicy(RetryPolicy value);
 
   /// Creates a [HubConnection] from the configuration options specified in this builder.
   ///
@@ -58,73 +68,72 @@ abstract class HubConnectionBuilder {
 }
 
 class _HubConnectionBuilder implements HubConnectionBuilder {
-  @override
-  HubProtocol protocol;
-  @override
-  HttpConnectionOptions httpConnectionOptions;
-  @override
-  String url;
-  @override
-  Logger logger;
-  @override
-  RetryPolicy reconnectPolicy;
+  String? _url;
+  HttpConnectionOptions? _httpConnectionOptions;
+  Logger? _logger;
+  HubProtocol? _protocol;
+  RetryPolicy? _reconnectPolicy;
 
   @override
-  HubConnectionBuilder configureLogging(Object logging) {
-    Arg.isRequired(logging, 'logging');
+  String? get $url => _url;
+  @override
+  HttpConnectionOptions? get $httpConnectionOptions => _httpConnectionOptions;
+  @override
+  Logger? get $logger => _logger;
+  @override
+  HubProtocol? get $protocol => _protocol;
+  @override
+  RetryPolicy? get $reconnectPolicy => _reconnectPolicy;
 
-    if (logging is Logger) {
-      logger = logging;
-    } else {
-      logger = ConsoleLogger(logging);
-    }
+  @override
+  set url(String value) {
+    Arg.isNotEmpty(value, 'url');
 
-    return this;
+    _url = value;
   }
 
   @override
-  HubConnectionBuilder withURL(String url, [Object transportTypeOrOptions]) {
-    Arg.isRequired(url, 'url');
-    Arg.isNotEmpty(url, 'url');
-
-    this.url = url;
-
-    // Flow-typing knows where it's at. Since HttpTransportType is a number and HttpConnectionOptions is guaranteed
-    // to be an object, we know (as does TypeScript) this comparison is all we need to figure out which overload was called.
-    if (transportTypeOrOptions is HttpConnectionOptions) {
-      httpConnectionOptions = transportTypeOrOptions;
-    } else {
-      httpConnectionOptions ??=
-          HttpConnectionOptions(transport: transportTypeOrOptions);
-    }
-
-    return this;
+  set transportType(HttpTransportType value) {
+    _httpConnectionOptions = HttpConnectionOptions(transport: value);
   }
 
   @override
-  HubConnectionBuilder withHubProtocol(HubProtocol protocol) {
-    Arg.isRequired(protocol, 'protocol');
-
-    this.protocol = protocol;
-    return this;
+  set httpConnectionOptions(HttpConnectionOptions value) {
+    _httpConnectionOptions = value;
   }
 
   @override
-  HubConnectionBuilder withAutomaticReconnect(
-      [Object retryDelaysOrReconnectPolicy]) {
-    if (reconnectPolicy != null) {
-      throw Exception('A reconnectPolicy has already been set.');
-    }
+  set logLevel(LogLevel value) {
+    _logger = ConsoleLogger(value);
+  }
 
-    if (retryDelaysOrReconnectPolicy == null) {
-      reconnectPolicy = DefaultReconnectPolicy();
-    } else if (retryDelaysOrReconnectPolicy is List<int>) {
-      reconnectPolicy = DefaultReconnectPolicy(retryDelaysOrReconnectPolicy);
+  @override
+  set logger(Logger value) {
+    _logger = value;
+  }
+
+  @override
+  set protocol(HubProtocol value) {
+    _protocol = value;
+  }
+
+  @override
+  set reconnect(bool value) {
+    if (value) {
+      _reconnectPolicy ??= RetryPolicy();
     } else {
-      reconnectPolicy = retryDelaysOrReconnectPolicy;
+      _reconnectPolicy = null;
     }
+  }
 
-    return this;
+  @override
+  set reconnectDelays(List<int> value) {
+    _reconnectPolicy = RetryPolicy(value);
+  }
+
+  @override
+  set reconnectPolicy(RetryPolicy value) {
+    _reconnectPolicy = value;
   }
 
   @override
@@ -132,20 +141,21 @@ class _HubConnectionBuilder implements HubConnectionBuilder {
     // If HttpConnectionOptions has a logger, use it. Otherwise, override it with the one
     // provided to configureLogger
     final httpConnectionOptions =
-        this.httpConnectionOptions ?? HttpConnectionOptions();
+        _httpConnectionOptions ?? HttpConnectionOptions();
 
     // If it's 'null', the user **explicitly** asked for null, don't mess with it.
     // If our logger is undefined or null, that's OK, the HttpConnection constructor will handle it.
-    httpConnectionOptions.logger ??= logger;
+    httpConnectionOptions.logger ??= _logger;
 
     // Now create the connection
-    if (url == null) {
-      throw Exception(
-          "The 'HubConnectionBuilder.withUrl' method must be called before building the connection.");
+    if (_url == null) {
+      throw Exception("The 'url' must be set before building the connection.");
     }
-    final connection = HttpConnection(url, httpConnectionOptions);
 
-    return HubConnection.create(connection, logger ?? NullLogger(),
-        protocol ?? JsonHubProtocol(), reconnectPolicy);
+    final connection = HttpConnection(_url!, httpConnectionOptions);
+    final logger = _logger ?? NullLogger();
+    final protocol = _protocol ?? JsonHubProtocol();
+
+    return HubConnection.create(connection, logger, protocol, _reconnectPolicy);
   }
 }

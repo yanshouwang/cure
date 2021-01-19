@@ -4,35 +4,21 @@ import 'dart:convert';
 import 'content_type.dart';
 
 /// HTTP request
-abstract class Request {
+class Request {
   /// method
-  String get method;
+  final String method;
 
   /// url
-  Uri get url;
+  final Uri url;
 
   /// headers
-  Map<String, String> get headers;
-
-  /// content
-  String content;
-
-  /// Create a request.
-  factory Request(String method, Uri url) => _Request(method, url);
-}
-
-class _Request implements Request {
-  @override
-  final String method;
-  @override
-  final Uri url;
-  @override
   final Map<String, String> headers;
 
-  @override
-  String content;
+  /// content
+  String? content;
 
-  _Request(this.method, this.url)
+  /// Create a request.
+  Request(this.method, this.url)
       : headers = LinkedHashMap(
             equals: (key1, key2) => key1.toLowerCase() == key2.toLowerCase(),
             hashCode: (key) => key.toLowerCase().hashCode);
@@ -45,15 +31,15 @@ class _Request implements Request {
 
 extension RequestExtension on Request {
   List<int> encode() {
-    return content == null ? [] : encoding.encode(content);
+    return content != null ? encoding.encode(content!) : [];
   }
 
   Encoding get encoding {
     final charset = contentType?.charset;
-    return charset == null ? utf8 : Encoding.getByName(charset);
+    return Encoding.getByName(charset) ?? utf8;
   }
 
-  ContentType get contentType {
+  ContentType? get contentType {
     final source = headers['content-type'];
     return source == null ? null : ContentType.parse(source);
   }

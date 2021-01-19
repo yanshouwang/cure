@@ -6,33 +6,43 @@ import 'package:tuple/tuple.dart';
 
 final messagePack = MessagePackCodec();
 
-class MessagePackCodec extends Codec<Object, Uint8List> {
+const HEAD_BYTE_REQUIRED = -1;
+const DEFAULT_MAX_LENGTH = 0xffffffff;
+const DEFAULT_MAX_DEPTH = 100;
+const DEFAULT_INITIAL_SIZE = 2048;
+const EXT_TIMESTAMP = -1;
+const TIMESTAMP32_MAX_SEC = 0x100000000 - 1; // 32-bit unsigned int
+const TIMESTAMP64_MAX_SEC = 0x400000000 - 1; // 34-bit unsigned int
+
+dynamic _defaultToEncodable(dynamic object) => object.toMessagePack();
+
+class MessagePackCodec extends Codec<Object?, Uint8List> {
   final Map<int, MessagePackExtensionCodec> _decoders;
   final Map<Type, MessagePackExtensionCodec> _encoders;
   final MessagePackDecodeOptions _decodeOptions;
   final MessagePackEncodeOptions _encodeOptions;
 
   @override
-  Converter<Uint8List, Object> get decoder =>
+  Converter<Uint8List, Object?> get decoder =>
       _MessagePackDecoder(_decoders, _decodeOptions);
   @override
-  Converter<Object, Uint8List> get encoder =>
+  Converter<Object?, Uint8List> get encoder =>
       _MessagePackEncoder(_encoders, _encodeOptions);
 
   MessagePackCodec({
-    MessagePackDecodeOptions decodeOptions,
-    MessagePackEncodeOptions encodeOptions,
+    MessagePackDecodeOptions? decodeOptions,
+    MessagePackEncodeOptions? encodeOptions,
   })  : _decoders = {},
         _encoders = {},
-        _decodeOptions = decodeOptions,
-        _encodeOptions = encodeOptions {
+        _decodeOptions = decodeOptions ?? MessagePackDecodeOptions(),
+        _encodeOptions = encodeOptions ?? MessagePackEncodeOptions() {
     _register(TimestampCodec());
   }
 
   void _register<T>(MessagePackExtensionCodec<T> codec) {
     // keep decoders and encoders are ont-to-one relationship.
     if (_encoders.containsKey(T)) {
-      final encoder = _encoders[T];
+      final encoder = _encoders[T]!;
       if (encoder.type < 0) {
         throw ArgumentError.value(T);
       } else if (encoder.type != codec.type) {
@@ -52,7 +62,7 @@ class MessagePackCodec extends Codec<Object, Uint8List> {
 
   void unregister<T>() {
     if (_encoders.containsKey(T)) {
-      final codec = _encoders[T];
+      final codec = _encoders[T]!;
       if (codec.type < 0) {
         throw ArgumentError.value(T);
       }
@@ -62,7 +72,7 @@ class MessagePackCodec extends Codec<Object, Uint8List> {
   }
 
   @override
-  Object decode(Uint8List source, [MessagePackDecodeOptions options]) {
+  Object? decode(Uint8List source, [MessagePackDecodeOptions? options]) {
     if (options == null) {
       return decoder.convert(source);
     } else {
@@ -71,7 +81,7 @@ class MessagePackCodec extends Codec<Object, Uint8List> {
   }
 
   @override
-  Uint8List encode(Object obj, [MessagePackEncodeOptions options]) {
+  Uint8List encode(Object? obj, [MessagePackEncodeOptions? options]) {
     if (options == null) {
       return encoder.convert(obj);
     } else {
@@ -80,7 +90,7 @@ class MessagePackCodec extends Codec<Object, Uint8List> {
   }
 }
 
-class _MessagePackDecoder extends Converter<Uint8List, Object> {
+class _MessagePackDecoder extends Converter<Uint8List, Object?> {
   final Map<int, MessagePackExtensionCodec> decoders;
   final int maxStrLength;
   final int maxBinaryLength;
@@ -94,25 +104,25 @@ class _MessagePackDecoder extends Converter<Uint8List, Object> {
   int pos;
 
   Uint8List bytes;
-  ByteData view;
+  late ByteData view;
   int headByte;
 
   _MessagePackDecoder(this.decoders, MessagePackDecodeOptions options)
-      : maxStrLength = options?.maxStrLength ?? DEFAULT_MAX_LENGTH,
-        maxBinaryLength = options?.maxBinaryLength ?? DEFAULT_MAX_LENGTH,
-        maxArrayLength = options?.maxArrayLength ?? DEFAULT_MAX_LENGTH,
-        maxMapLength = options?.maxMapLength ?? DEFAULT_MAX_LENGTH,
-        maxExtensionLength = options?.maxExtensionLength ?? DEFAULT_MAX_LENGTH,
-        stack = [] {
-    totalPos = 0;
-    pos = 0;
-    bytes = Uint8List(0);
+      : maxStrLength = options.maxStrLength,
+        maxBinaryLength = options.maxBinaryLength,
+        maxArrayLength = options.maxArrayLength,
+        maxMapLength = options.maxMapLength,
+        maxExtensionLength = options.maxExtensionLength,
+        stack = [],
+        totalPos = 0,
+        pos = 0,
+        bytes = Uint8List(0),
+        headByte = HEAD_BYTE_REQUIRED {
     view = ByteData.view(bytes.buffer);
-    headByte = HEAD_BYTE_REQUIRED;
   }
 
   @override
-  Object convert(Uint8List source) {
+  Object? convert(Uint8List source) {
     reinitializeState();
     setBuffer(source);
 
@@ -134,11 +144,11 @@ class _MessagePackDecoder extends Converter<Uint8List, Object> {
     pos = 0;
   }
 
-  Object decode() {
+  Object? decode() {
     DECODE:
     while (true) {
       final headByte = readHeadByte();
-      Object object;
+      Object? object;
 
       if (headByte >= 0xe0) {
         // negative fixint (111x xxxx) 0xe0 - 0xff
@@ -423,7 +433,7 @@ class _MessagePackDecoder extends Converter<Uint8List, Object> {
     return object;
   }
 
-  Object decodeExtension(int size, int headOffset) {
+  Object? decodeExtension(int size, int headOffset) {
     if (size > maxExtensionLength) {
       throw Exception(
           'Max length exceeded: ext length ($size) > maxExtLength ($maxExtensionLength)');
@@ -432,7 +442,7 @@ class _MessagePackDecoder extends Converter<Uint8List, Object> {
     final type = view.getInt8(pos + headOffset);
     final data = decodeBinary(size, headOffset + 1 /* extType */);
     if (decoders.containsKey(type)) {
-      final decoder = decoders[type];
+      final decoder = decoders[type]!;
       return decoder.decode(data);
     } else {
       return Tuple2(type, data);
@@ -521,21 +531,38 @@ class _MessagePackDecoder extends Converter<Uint8List, Object> {
   }
 }
 
+class MessagePackDecodeOptions {
+  final int maxStrLength;
+  final int maxBinaryLength;
+  final int maxArrayLength;
+  final int maxMapLength;
+  final int maxExtensionLength;
+
+  MessagePackDecodeOptions({
+    this.maxStrLength = DEFAULT_MAX_LENGTH,
+    this.maxBinaryLength = DEFAULT_MAX_LENGTH,
+    this.maxArrayLength = DEFAULT_MAX_LENGTH,
+    this.maxMapLength = DEFAULT_MAX_LENGTH,
+    this.maxExtensionLength = DEFAULT_MAX_LENGTH,
+  });
+}
+
+abstract class StackState {
+  State get type;
+  set type(State value);
+}
+
 enum State {
   array,
   map_key,
   map_value,
 }
 
-abstract class StackState {
-  State type;
-}
-
 class StackMapState implements StackState {
   @override
   State type;
   int size;
-  Object key;
+  Object? key;
   int readCount;
   Map map;
 
@@ -552,12 +579,9 @@ class StackArrayState implements StackState {
   StackArrayState(this.type, this.size, this.position, this.array);
 }
 
-const DEFAULT_MAX_LENGTH = 0xffffffff;
-const HEAD_BYTE_REQUIRED = -1;
-
-class _MessagePackEncoder extends Converter<Object, Uint8List> {
+class _MessagePackEncoder extends Converter<Object?, Uint8List> {
   final Map<Type, MessagePackExtensionCodec> encoders;
-  final Object Function(Object) toEncodable;
+  final dynamic Function(dynamic) toEncodable;
   final int maxDepth;
   final int initialSize;
   final bool sortKeys;
@@ -565,29 +589,29 @@ class _MessagePackEncoder extends Converter<Object, Uint8List> {
   final bool forceIntegerToFloat;
 
   int pos;
-  ByteData view;
-  Uint8List bytes;
+  late ByteData view;
+  late Uint8List bytes;
 
   _MessagePackEncoder(this.encoders, MessagePackEncodeOptions options)
-      : toEncodable = options?.toEncodable ?? _defaultToEncodable,
-        maxDepth = options?.maxDepth ?? DEFAULT_MAX_DEPTH,
-        initialSize = options?.initialSize ?? DEFAULT_INITIAL_SIZE,
-        sortKeys = options?.sortKeys ?? false,
-        forceFloat32 = options?.forceFloat32 ?? false,
-        forceIntegerToFloat = options?.forceIntegerToFloat ?? false {
-    pos = 0;
+      : toEncodable = options.toEncodable,
+        maxDepth = options.maxDepth,
+        initialSize = options.initialSize,
+        sortKeys = options.sortKeys,
+        forceFloat32 = options.forceFloat32,
+        forceIntegerToFloat = options.forceIntegerToFloat,
+        pos = 0 {
     bytes = Uint8List(initialSize);
     view = ByteData.view(bytes.buffer);
   }
 
   @override
-  Uint8List convert(Object object) {
+  Uint8List convert(Object? object) {
     pos = 0;
     encode(object, 1);
     return bytes.sublist(0, pos);
   }
 
-  void encode(Object object, int depth) {
+  void encode(Object? object, int depth) {
     if (depth > maxDepth) {
       throw Exception('Too deep objects in depth $depth');
     }
@@ -786,7 +810,7 @@ class _MessagePackEncoder extends Converter<Object, Uint8List> {
 
   void encodeOthers(Object object) {
     if (encoders.containsKey(object.runtimeType)) {
-      final encoder = encoders[object.runtimeType];
+      final encoder = encoders[object.runtimeType]!;
       final data = encoder.encode(object);
       final size = data.length;
       if (size == 1) {
@@ -942,30 +966,8 @@ class _MessagePackEncoder extends Converter<Object, Uint8List> {
   }
 }
 
-// reuse JSON format by default.
-Object _defaultToEncodable(dynamic object) => object.toMessagePack();
-
-const DEFAULT_MAX_DEPTH = 100;
-const DEFAULT_INITIAL_SIZE = 2048;
-
-class MessagePackDecodeOptions {
-  final int maxStrLength;
-  final int maxBinaryLength;
-  final int maxArrayLength;
-  final int maxMapLength;
-  final int maxExtensionLength;
-
-  MessagePackDecodeOptions({
-    this.maxStrLength,
-    this.maxBinaryLength,
-    this.maxArrayLength,
-    this.maxMapLength,
-    this.maxExtensionLength,
-  });
-}
-
 class MessagePackEncodeOptions {
-  final Object Function(Object) toEncodable;
+  final dynamic Function(dynamic) toEncodable;
   final int maxDepth;
   final int initialSize;
   final bool sortKeys;
@@ -973,22 +975,18 @@ class MessagePackEncodeOptions {
   final bool forceIntegerToFloat;
 
   MessagePackEncodeOptions({
-    this.toEncodable,
-    this.maxDepth,
-    this.initialSize,
-    this.sortKeys,
-    this.forceFloat32,
-    this.forceIntegerToFloat,
+    this.toEncodable = _defaultToEncodable,
+    this.maxDepth = DEFAULT_MAX_DEPTH,
+    this.initialSize = DEFAULT_INITIAL_SIZE,
+    this.sortKeys = false,
+    this.forceFloat32 = false,
+    this.forceIntegerToFloat = false,
   });
 }
 
 abstract class MessagePackExtensionCodec<T> extends Codec<T, Uint8List> {
   int get type;
 }
-
-const EXT_TIMESTAMP = -1;
-const TIMESTAMP32_MAX_SEC = 0x100000000 - 1; // 32-bit unsigned int
-const TIMESTAMP64_MAX_SEC = 0x400000000 - 1; // 34-bit unsigned int
 
 class TimestampCodec extends MessagePackExtensionCodec<Timestamp> {
   @override

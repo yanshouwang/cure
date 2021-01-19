@@ -1,4 +1,5 @@
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/text_message_format.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 

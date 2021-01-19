@@ -1,7 +1,8 @@
 import 'dart:math';
 
+import 'package:cure/core.dart';
+
 import 'base_crc.dart';
-import 'utils.dart';
 
 class SimpleCRC extends BaseCRC {
   SimpleCRC(String name, int width, int poly, int init, bool refIn, bool refOut,

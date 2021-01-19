@@ -6,7 +6,7 @@ import 'test_http_client.dart';
 void main() {
   group('# GET', () {
     test('# sets the method and URL appropriately', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final client = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');
@@ -17,7 +17,7 @@ void main() {
       expect(request.url, 'http://localhost');
     });
     test('# overrides method and url in options', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final client = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');
@@ -29,7 +29,7 @@ void main() {
       expect(request.url, 'http://localhost');
     });
     test('# copies other options', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final testClient = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');
@@ -43,7 +43,7 @@ void main() {
   });
   group('# POST', () {
     test('# sets the method and URL appropriately', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final client = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');
@@ -54,7 +54,7 @@ void main() {
       expect(request.url, 'http://localhost');
     });
     test('# overrides method and url in options', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final client = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');
@@ -66,7 +66,7 @@ void main() {
       expect(request.url, 'http://localhost');
     });
     test('# copies other options', () async {
-      HttpRequest request;
+      late HttpRequest request;
       final testClient = TestHttpClient().on((r, next) {
         request = r;
         return Future.value('');

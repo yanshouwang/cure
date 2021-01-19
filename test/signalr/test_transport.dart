@@ -2,12 +2,12 @@ import 'package:cure/signalr.dart';
 
 class TestTransport extends Transport {
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     return Future.value();
   }
 

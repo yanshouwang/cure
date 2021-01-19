@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/connection.dart';
+import 'package:cure/src/signalr/text_message_format.dart';
 
 class TestConnection implements Connection {
   @override
@@ -9,20 +11,20 @@ class TestConnection implements Connection {
   @override
   final Map<String, Object> features;
   @override
-  String connectionId;
+  String? connectionId;
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   List<dynamic> sentData;
   List<dynamic> parsedSentData;
-  String lastInvocationId;
+  String? lastInvocationId;
 
   final bool _autoHandshake;
 
-  Future<void> Function() startFuture;
-  Future<void> Function() sendFuture;
+  Future<void> Function()? startFuture;
+  Future<void> Function()? sendFuture;
 
   TestConnection(
       [this._autoHandshake = true, bool hasInherentKeepAlive = false])
@@ -39,7 +41,7 @@ class TestConnection implements Connection {
   @override
   Future<void> startAsync(TransferFormat transferFormat) {
     if (startFuture != null) {
-      return startFuture();
+      return startFuture!();
     } else {
       return Future.value();
     }
@@ -48,10 +50,10 @@ class TestConnection implements Connection {
   @override
   Future<void> sendAsync(data) {
     if (sendFuture != null) {
-      return sendFuture();
+      return sendFuture!();
     } else {
-      final invocation = TextMessageFormat.parse(data)[0];
-      final parsedInvocation = json.decode(invocation) as Map<String, Object>;
+      final invocation = TextMessageFormat.parse(data as String)[0];
+      final parsedInvocation = json.decode(invocation) as Map<String, dynamic>;
       final invocationId = parsedInvocation['invocationId'];
       if (parsedInvocation.containsKey('protocol') &&
           parsedInvocation.containsKey('version') &&
@@ -59,26 +61,23 @@ class TestConnection implements Connection {
         receiveHandshakeResponse();
       }
       if (invocationId != null) {
-        lastInvocationId = invocationId;
+        lastInvocationId = invocationId as String?;
       }
-      if (sentData != null) {
-        sentData.add(invocation);
-        parsedSentData.add(parsedInvocation);
-      } else {
-        sentData = [invocation];
-        parsedSentData = [parsedInvocation];
-      }
+
+      sentData.add(invocation);
+      parsedSentData.add(parsedInvocation);
+
       return Future.value();
     }
   }
 
   @override
-  Future<void> stopAsync([Exception error]) {
+  Future<void> stopAsync([Object? error]) {
     onclose?.call(error);
     return Future.value();
   }
 
-  void receiveHandshakeResponse([String error]) {
+  void receiveHandshakeResponse([String? error]) {
     final data = <String, Object>{};
     if (error != null) {
       data['error'] = error;

@@ -1,4 +1,4 @@
-import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/utils.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 

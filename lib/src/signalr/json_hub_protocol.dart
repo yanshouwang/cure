@@ -1,8 +1,8 @@
 import 'package:cure/convert.dart';
+import 'package:cure/src/signalr/text_message_format.dart';
 
 import 'hub_protocol.dart';
 import 'logger.dart';
-import 'text_message_format.dart';
 import 'transport.dart';
 
 /// Implements the JSON Hub Protocol.
@@ -22,59 +22,56 @@ class JsonHubProtocol implements HubProtocol {
   List<HubMessage> parseMessages(Object input, Logger logger) {
     if (input is String) {
       final hubMessages = <HubMessage>[];
-      if (input != null) {
-        logger ??= NullLogger();
-        // Parse the messages
-        final messages = TextMessageFormat.parse(input);
-        for (final message in messages) {
-          final obj = json.decode(message) as Map<String, Object>;
-          final type = obj['type'];
-          if (type is int) {
-            final value = MessageType.fromJSON(type);
-            HubMessage parsedMessage;
-            switch (value) {
-              case MessageType.invocation:
-                try {
-                  parsedMessage = InvocationMessage.fromJSON(obj);
-                  _isInvocationMessage(parsedMessage);
-                } catch (_) {
-                  throw Exception('Invalid payload for Invocation message.');
-                }
-                break;
-              case MessageType.streamItem:
-                try {
-                  parsedMessage = StreamItemMessage.fromJSON(obj);
-                  _isStreamItemMessage(parsedMessage);
-                } catch (_) {
-                  throw Exception('Invalid payload for StreamItem message.');
-                }
-                break;
-              case MessageType.completion:
-                try {
-                  parsedMessage = CompletionMessage.fromJSON(obj);
-                  _isCompletionMessage(parsedMessage);
-                } catch (_) {
-                  throw Exception('Invalid payload for Completion message.');
-                }
-                break;
-              case MessageType.ping:
-                parsedMessage = PingMessage.fromJSON(obj);
-                // Single value, no need to validate
-                break;
-              case MessageType.close:
-                parsedMessage = CloseMessage.fromJSON(obj);
-                // All optional values, no need to validate
-                break;
-              default:
-                // Future protocol changes can add message types, old clients can ignore them
-                logger.log(LogLevel.information,
-                    "Unknown message type '$value' ignored.");
-                continue;
-            }
-            hubMessages.add(parsedMessage);
-          } else {
-            throw Exception('Invalid payload.');
+      // Parse the messages
+      final messages = TextMessageFormat.parse(input);
+      for (final message in messages) {
+        final obj = json.decode(message) as Map<String, dynamic>;
+        final type = obj['type'];
+        if (type is int) {
+          final value = MessageType.fromJSON(type);
+          HubMessage parsedMessage;
+          switch (value) {
+            case MessageType.invocation:
+              try {
+                parsedMessage = InvocationMessage.fromJSON(obj);
+                _isInvocationMessage(parsedMessage as InvocationMessage);
+              } catch (_) {
+                throw Exception('Invalid payload for Invocation message.');
+              }
+              break;
+            case MessageType.streamItem:
+              try {
+                parsedMessage = StreamItemMessage.fromJSON(obj);
+                _isStreamItemMessage(parsedMessage as StreamItemMessage);
+              } catch (_) {
+                throw Exception('Invalid payload for StreamItem message.');
+              }
+              break;
+            case MessageType.completion:
+              try {
+                parsedMessage = CompletionMessage.fromJSON(obj);
+                _isCompletionMessage(parsedMessage as CompletionMessage);
+              } catch (_) {
+                throw Exception('Invalid payload for Completion message.');
+              }
+              break;
+            case MessageType.ping:
+              parsedMessage = PingMessage.fromJSON(obj);
+              // Single value, no need to validate
+              break;
+            case MessageType.close:
+              parsedMessage = CloseMessage.fromJSON(obj);
+              // All optional values, no need to validate
+              break;
+            default:
+              // Future protocol changes can add message types, old clients can ignore them
+              logger.log(LogLevel.information,
+                  "Unknown message type '$value' ignored.");
+              continue;
           }
+          hubMessages.add(parsedMessage);
+        } else {
+          throw Exception('Invalid payload.');
         }
       }
       return hubMessages;
@@ -127,10 +124,8 @@ class JsonHubProtocol implements HubProtocol {
         message.invocationId, 'Invalid payload for Completion message.');
   }
 
-  void _assertNotEmptyString(Object value, String errorMessage) {
-    if (value is String && value.isNotEmpty) {
-      // value is not empty string, just continue.
-    } else {
+  void _assertNotEmptyString(dynamic value, String errorMessage) {
+    if (value is! String || value.isEmpty) {
       throw Exception(errorMessage);
     }
   }

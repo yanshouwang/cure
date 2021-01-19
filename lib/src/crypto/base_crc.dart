@@ -1,5 +1,6 @@
 import 'crc.dart';
 
+/// Base class to implement CRC
 abstract class BaseCRC implements CRC {
   @override
   final String name;

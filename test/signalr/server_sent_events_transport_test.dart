@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/server_sent_events_transport.dart';
+import 'package:cure/src/signalr/utils.dart';
 import 'package:test/test.dart';
 
 import 'common.dart';
@@ -15,7 +17,7 @@ void main() {
           null,
           logger,
           true,
-          (url, {headers, withCredentials}) =>
+          (url, headers, withCredentials) =>
               TestEventSource(url, headers: headers),
           true,
           {});
@@ -34,7 +36,7 @@ void main() {
           null,
           logger,
           true,
-          (url, {headers, withCredentials}) =>
+          (url, headers, withCredentials) =>
               TestEventSource(url, headers: headers),
           true,
           {});
@@ -47,12 +49,12 @@ void main() {
         connectComplete = true;
       })();
 
-      await TestEventSource.eventSourceSet.future;
+      await TestEventSource.eventSourceSet!.future;
       await TestEventSource.eventSource.openSet.future;
 
       expect(connectComplete, false);
 
-      TestEventSource.eventSource.onopen();
+      TestEventSource.eventSource.onopen!();
 
       await connectFuture;
       expect(connectComplete, true);
@@ -65,7 +67,7 @@ void main() {
           null,
           logger,
           true,
-          (url, {headers, withCredentials}) =>
+          (url, headers, withCredentials) =>
               TestEventSource(url, headers: headers),
           true,
           {});
@@ -78,10 +80,10 @@ void main() {
         await sse.connectAsync('http://example.com', TransferFormat.text);
       })();
 
-      await TestEventSource.eventSourceSet.future;
+      await TestEventSource.eventSourceSet!.future;
       await TestEventSource.eventSource.openSet.future;
 
-      TestEventSource.eventSource.onerror(null);
+      TestEventSource.eventSource.onerror!(null);
 
       final m = predicate((e) => '$e' == 'Exception: Error occurred');
       final matcher = throwsA(m);
@@ -111,7 +113,7 @@ void main() {
 
   test('# sets Authorization header on sends', () async {
     await VerifyLogger.runAsync((logger) async {
-      HttpRequest request;
+      late HttpRequest request;
       final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
@@ -122,13 +124,13 @@ void main() {
 
       await sse.sendAsync('');
 
-      expect(request.headers['Authorization'], 'Bearer secretToken');
+      expect(request.headers!['Authorization'], 'Bearer secretToken');
       expect(request.url, 'http://example.com');
     });
   });
   test('# can send data', () async {
     await VerifyLogger.runAsync((logger) async {
-      HttpRequest request;
+      late HttpRequest request;
       final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
@@ -146,10 +148,10 @@ void main() {
     await VerifyLogger.runAsync((logger) async {
       final sse = await createAndStartSSEAsync(logger);
 
-      Object received;
+      Object? received;
       sse.onreceive = (data) => received = data;
 
-      TestEventSource.eventSource.ondata('message', 'receive data');
+      TestEventSource.eventSource.ondata!('message', 'receive data');
 
       expect(received, 'receive data');
     });
@@ -172,14 +174,14 @@ void main() {
       final sse = await createAndStartSSEAsync(logger);
 
       var closeCalled = false;
-      Exception fail;
+      Object? fail;
       sse.onclose = (e) {
         closeCalled = true;
         fail = e;
       };
 
       final error = Exception('error');
-      TestEventSource.eventSource.onerror(error);
+      TestEventSource.eventSource.onerror!(error);
 
       expect(closeCalled, true);
       expect(TestEventSource.eventSource.closed, true);
@@ -193,7 +195,7 @@ void main() {
           null,
           logger,
           true,
-          (url, {headers, withCredentials}) =>
+          (url, headers, withCredentials) =>
               TestEventSource(url, headers: headers),
           true,
           {});
@@ -211,13 +213,13 @@ void main() {
       sse.onreceive = (data) => throw Exception('error parsing');
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       sse.onclose = (e) {
         closeCalled = true;
         error = e;
       };
 
-      TestEventSource.eventSource.ondata('error', 'some data');
+      TestEventSource.eventSource.ondata!('error', 'some data');
 
       expect(closeCalled, true);
       expect(TestEventSource.eventSource.closed, true);
@@ -227,7 +229,7 @@ void main() {
   });
   test('# sets user agent header on connect and sends', () async {
     await VerifyLogger.runAsync((logger) async {
-      HttpRequest request;
+      late HttpRequest request;
       final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
@@ -238,17 +240,17 @@ void main() {
 
       var userAgent = getUserAgentHeader();
       expect(
-          TestEventSource.eventSource.headers['User-Agent'], userAgent.value);
+          TestEventSource.eventSource.headers!['User-Agent'], userAgent.value);
       await sse.sendAsync('');
 
       userAgent = getUserAgentHeader();
-      expect(request.headers['User-Agent'], userAgent.value);
+      expect(request.headers!['User-Agent'], userAgent.value);
       expect(request.url, 'http://example.com');
     });
   });
   test('# overwrites library headers with user headers', () async {
     await VerifyLogger.runAsync((logger) async {
-      HttpRequest request;
+      late HttpRequest request;
       final httpClient = TestHttpClient().on((r, next) {
         request = r;
         return '';
@@ -258,41 +260,41 @@ void main() {
       final sse = await createAndStartSSEAsync(
           logger, 'http://example.com', null, httpClient, headers);
 
-      expect(TestEventSource.eventSource.headers['User-Agent'], 'Custom Agent');
-      expect(TestEventSource.eventSource.headers['X-HEADER'], 'VALUE');
+      expect(
+          TestEventSource.eventSource.headers!['User-Agent'], 'Custom Agent');
+      expect(TestEventSource.eventSource.headers!['X-HEADER'], 'VALUE');
       await sse.sendAsync('');
 
-      expect(request.headers['User-Agent'], 'Custom Agent');
-      expect(request.headers['X-HEADER'], 'VALUE');
+      expect(request.headers!['User-Agent'], 'Custom Agent');
+      expect(request.headers!['X-HEADER'], 'VALUE');
       expect(request.url, 'http://example.com');
     });
   });
 }
 
 Future<ServerSentEventsTransport> createAndStartSSEAsync(Logger logger,
-    [String url,
-    Object Function() accessTokenFactory,
-    HttpClient httpClient,
-    Map<String, String> headers]) async {
+    [String? url,
+    String Function()? accessTokenBuilder,
+    HttpClient? httpClient,
+    Map<String, String>? headers]) async {
   TestEventSource.eventSourceSet = Completer();
 
   final sse = ServerSentEventsTransport(
       httpClient ?? TestHttpClient(),
-      accessTokenFactory,
+      accessTokenBuilder,
       logger,
       true,
-      (url, {headers, withCredentials}) =>
-          TestEventSource(url, headers: headers),
+      (url, headers, withCredentials) => TestEventSource(url, headers: headers),
       true,
       headers ?? {});
 
   final connectFuture =
       sse.connectAsync(url ?? 'http://example.com', TransferFormat.text);
 
-  await TestEventSource.eventSourceSet.future;
+  await TestEventSource.eventSourceSet!.future;
   await TestEventSource.eventSource.openSet.future;
 
-  TestEventSource.eventSource.onopen();
+  TestEventSource.eventSource.onopen!();
   await connectFuture;
   return sse;
 }

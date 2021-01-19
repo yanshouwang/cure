@@ -1,7 +1,7 @@
 import 'dart:async';
 
 Future<void> delayUntilAsync(int timeoutInMilliseconds,
-    [bool Function() condition]) {
+    [bool Function()? condition]) {
   final completer = Completer<void>();
   var timeWait = 0;
   final duration = Duration(milliseconds: 10);

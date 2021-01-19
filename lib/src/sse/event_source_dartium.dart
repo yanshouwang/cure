@@ -5,16 +5,16 @@ import 'dart:io';
 import 'event_source.dart';
 
 EventSource connectEventSource(String url,
-        {Map<String, String> headers, bool withCredentials}) =>
+        {Map<String, String>? headers, bool? withCredentials}) =>
     _EventSource.connect(url, headers: headers);
 
 class _EventSource implements EventSource {
-  HttpClient _client;
-  String _event;
-  String _data;
-  String _id;
-  int _retry;
-  Timer _timer;
+  HttpClient? _client;
+  String? _event;
+  String? _data;
+  String? _id;
+  int? _retry;
+  Timer? _timer;
   int _readyState;
 
   @override
@@ -22,25 +22,25 @@ class _EventSource implements EventSource {
   @override
   int get readyState => _readyState;
   @override
-  void Function() onopen;
+  void Function()? onopen;
   @override
-  void Function(Exception data) onerror;
+  void Function(Object? error)? onerror;
   @override
-  void Function(String event, String data) ondata;
+  void Function(String event, String? data)? ondata;
 
-  _EventSource._(this.url, {Map<String, String> headers})
+  _EventSource._(this.url, {Map<String, String>? headers})
       : _readyState = EventSource.CLOSED {
     _connect(headers: headers);
   }
 
-  void _connect({Map<String, String> headers}) async {
+  void _connect({Map<String, String>? headers}) async {
     if (readyState != EventSource.CLOSED) {
       return;
     }
     _readyState = EventSource.CONNECTING;
     final uri = Uri.parse(url);
     _client = HttpClient();
-    final request = await _client.getUrl(uri);
+    final request = await _client!.getUrl(uri);
     if (headers != null) {
       for (var header in headers.entries) {
         request.headers.set(header.key, header.value);
@@ -48,7 +48,7 @@ class _EventSource implements EventSource {
     }
     request.headers.set('Accept', 'text/event-stream');
     if (_id != null) {
-      request.headers.set('Last-Event-ID', _id);
+      request.headers.set('Last-Event-ID', _id!);
     }
     final response = await request.close();
     if (response.statusCode == HttpStatus.ok) {
@@ -71,8 +71,7 @@ class _EventSource implements EventSource {
       if (_event == null && _data == null) {
         return;
       }
-      _event ??= 'message';
-      ondata?.call(_event, _data);
+      ondata?.call(_event ?? 'message', _data);
       _event = null;
       _data = null;
     } else if (data.startsWith(':')) {
@@ -123,7 +122,7 @@ class _EventSource implements EventSource {
     });
   }
 
-  factory _EventSource.connect(String url, {Map<String, String> headers}) {
+  factory _EventSource.connect(String url, {Map<String, String>? headers}) {
     return _EventSource._(url, headers: headers);
   }
 
@@ -133,11 +132,11 @@ class _EventSource implements EventSource {
       return;
     }
     if (_timer != null) {
-      _timer.cancel();
+      _timer!.cancel();
       _timer == null;
     }
     if (_client != null) {
-      _client.close(force: true);
+      _client!.close(force: true);
       _client = null;
     }
     _readyState = EventSource.CLOSED;

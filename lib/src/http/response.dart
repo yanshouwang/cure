@@ -3,45 +3,30 @@ import 'dart:convert';
 import 'content_type.dart';
 
 /// HTTP response
-abstract class Response {
+class Response {
   /// statusCode
-  int get statusCode;
+  final int statusCode;
 
   /// statusText
-  String get statusText;
+  final String? statusText;
 
   /// content
-  String get content;
+  final String? content;
 
   /// headers
-  Map<String, String> get headers;
+  final Map<String, String> headers;
 
   /// Create a response
-  factory Response(int statusCode, String statusText, String content,
-          Map<String, String> headers) =>
-      _Response(statusCode, statusText, content, headers);
-}
-
-class _Response implements Response {
-  @override
-  final String content;
-  @override
-  final Map<String, String> headers;
-  @override
-  final int statusCode;
-  @override
-  final String statusText;
-
-  _Response(this.statusCode, this.statusText, this.content, this.headers);
+  Response(this.statusCode, this.statusText, this.content, this.headers);
 }
 
 extension ResponseExtension on Response {
   Encoding get encoding {
     final charset = contentType?.charset;
-    return charset == null ? utf8 : Encoding.getByName(charset);
+    return Encoding.getByName(charset) ?? utf8;
   }
 
-  ContentType get contentType {
+  ContentType? get contentType {
     final source = headers['content-type'];
     return source == null ? null : ContentType.parse(source);
   }

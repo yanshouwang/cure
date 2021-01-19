@@ -1,4 +1,9 @@
-import 'abort_controller.dart';
+import 'abort_signal.dart';
+import 'errors.dart';
+import 'http_client_stub.dart'
+    if (dart.library.html) 'http_client_chromium.dart'
+    if (dart.library.io) 'http_client_dartium.dart';
+import 'logger.dart';
 
 /// Abstraction over an HTTP client.
 ///
@@ -9,7 +14,7 @@ abstract class HttpClient {
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
   /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HttpResponse> getAsync(String url, [HttpRequest options]) {
+  Future<HttpResponse> getAsync(String url, [HttpRequest? options]) {
     options ??= HttpRequest();
     options.method = 'GET';
     options.url = url;
@@ -21,7 +26,7 @@ abstract class HttpClient {
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
   /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HttpResponse> postAsync(String url, [HttpRequest options]) {
+  Future<HttpResponse> postAsync(String url, [HttpRequest? options]) {
     options ??= HttpRequest();
     options.method = 'POST';
     options.url = url;
@@ -33,7 +38,7 @@ abstract class HttpClient {
   /// [url] The URL for the request.
   /// [options] Additional options to configure the request. The 'url' field in this object will be overridden by the [url] parameter.
   /// Returns a [Future] that resolves with an [HttpResponse] describing the response, or rejects with an Error indicating a failure.
-  Future<HttpResponse> deleteAsync(String url, [HttpRequest options]) {
+  Future<HttpResponse> deleteAsync(String url, [HttpRequest? options]) {
     options ??= HttpRequest();
     options.method = 'DELETE';
     options.url = url;
@@ -53,79 +58,89 @@ abstract class HttpClient {
   String getCookieString(String url) {
     return '';
   }
+
+  HttpClient();
+
+  factory HttpClient.withLogger(Logger logger) => _HttpClient(logger);
+}
+
+/// Default implementation of [HttpClient].
+class _HttpClient extends HttpClient {
+  final HttpClient _httpClient;
+
+  /// Creates a new instance of the [HttpClient], using the provided [logger] to log messages.
+  _HttpClient(Logger logger) : _httpClient = createClient(logger);
+
+  @override
+  Future<HttpResponse> sendAsync(HttpRequest request) {
+    if (request.abortSignal != null && request.abortSignal!.aborted) {
+      final error = AbortException();
+      return Future.error(error);
+    }
+    if (request.method == null) {
+      final error = Exception('No method defined.');
+      return Future.error(error);
+    }
+    if (request.url == null) {
+      final error = Exception('No url defined.');
+      return Future.error(error);
+    }
+    return _httpClient.sendAsync(request);
+  }
+
+  @override
+  String getCookieString(String url) {
+    return _httpClient.getCookieString(url);
+  }
 }
 
 /// Represents an HTTP request.
-abstract class HttpRequest {
+class HttpRequest {
   /// The HTTP method to use for the request.
-  String method;
+  String? method;
 
   /// The URL for the request.
-  String url;
+  String? url;
 
   /// The body content for the request. May be a string or an ArrayBuffer (for binary data).
-  Object content;
+  Object? content;
 
   /// An object describing headers to apply to the request.
-  Map<String, String> headers;
+  Map<String, String>? headers;
 
   /// The XMLHTTPRequestResponseType to apply to the request.
-  String responseType;
+  String? responseType;
 
   /// An AbortSignal that can be monitored for cancellation.
-  AbortSignal abortSignal;
+  AbortSignal? abortSignal;
 
   /// The time to wait for the request to complete before throwing a TimeoutError. Measured in milliseconds.
-  int timeout;
+  int? timeout;
 
   /// This controls whether credentials such as cookies are sent in cross-site requests.
-  bool withCredentials;
+  bool? withCredentials;
 
-  factory HttpRequest(
-          {String method,
-          String url,
-          Object content,
-          Map<String, String> headers,
-          String responseType,
-          AbortSignal abortSignal,
-          int timeout,
-          bool withCredentials}) =>
-      _HttpRequest(method, url, content, headers, responseType, abortSignal,
-          timeout, withCredentials);
-}
-
-class _HttpRequest implements HttpRequest {
-  @override
-  AbortSignal abortSignal;
-  @override
-  var content;
-  @override
-  Map<String, String> headers;
-  @override
-  String method;
-  @override
-  String responseType;
-  @override
-  int timeout;
-  @override
-  String url;
-  @override
-  bool withCredentials;
-
-  _HttpRequest(this.method, this.url, this.content, this.headers,
-      this.responseType, this.abortSignal, this.timeout, this.withCredentials);
+  HttpRequest(
+      {this.method,
+      this.url,
+      this.content,
+      this.headers,
+      this.responseType,
+      this.abortSignal,
+      this.timeout,
+      this.withCredentials});
 }
 
 /// Represents an HTTP response.
-abstract class HttpResponse {
+class HttpResponse {
   /// The status code of the response.
   final int statusCode;
 
   /// The status message of the response.
-  final String statusText;
+  final String? statusText;
 
   /// The content of the response.
-  final Object content;
+  final Object? content;
 
   /// Constructs a new instance of [HttpResponse] with the specified status code, message and binary content.
   ///
@@ -134,17 +149,5 @@ abstract class HttpResponse {
   /// [statusText] The status message of the response.
   ///
   /// [content] The content of the response.
-  factory HttpResponse(int statusCode, [String statusText, Object content]) =>
-      _HttpResponse(statusCode, statusText, content);
-}
-
-class _HttpResponse implements HttpResponse {
-  @override
-  final int statusCode;
-  @override
-  final String statusText;
-  @override
-  final Object content;
-
-  _HttpResponse(this.statusCode, this.statusText, this.content);
+  HttpResponse(this.statusCode, [this.statusText, this.content]);
 }

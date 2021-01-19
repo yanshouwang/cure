@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/utils.dart';
+import 'package:cure/src/signalr/web_socket_transport.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 
@@ -50,7 +52,7 @@ void main() {
       expect(connectComplete, false);
 
       final error = Exception('There was an error with the transport.');
-      TestWebSocket.ws.onerror(error);
+      TestWebSocket.ws.onerror!(error);
 
       final mathcer = throwsA(error);
       await expectLater(connectFuture, mathcer);
@@ -97,7 +99,7 @@ void main() {
       test('# ${item.key}', () async {
         await VerifyLogger.runAsync((logger) async {
           await createAndStartWebSocketAsync(
-              logger, item.key, () => Future.value('secretToken'));
+              logger, item.key, () => 'secretToken');
           expect(TestWebSocket.ws.url, item.value);
         });
       });
@@ -122,10 +124,10 @@ void main() {
     await VerifyLogger.runAsync((logger) async {
       final webSocket = await createAndStartWebSocketAsync(logger);
 
-      Object received;
+      Object? received;
       webSocket.onreceive = (data) => received = data;
 
-      TestWebSocket.ws.ondata('receive data');
+      TestWebSocket.ws.ondata!('receive data');
 
       expect(received, isA<String>());
       expect(received, 'receive data');
@@ -136,7 +138,7 @@ void main() {
       final transport = await createAndStartWebSocketAsync(logger);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
@@ -163,7 +165,7 @@ void main() {
       final transport = await createAndStartWebSocketAsync(logger);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
@@ -187,7 +189,7 @@ void main() {
       final transport = await createAndStartWebSocketAsync(logger);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
@@ -229,14 +231,14 @@ void main() {
       final transport = await createAndStartWebSocketAsync(logger);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
       };
 
       final userAgent = getUserAgentHeader();
-      expect(TestWebSocket.ws.headers['User-Agent'], userAgent.value);
+      expect(TestWebSocket.ws.headers!['User-Agent'], userAgent.value);
 
       await transport.stopAsync();
 
@@ -256,14 +258,14 @@ void main() {
           await createAndStartWebSocketAsync(logger, null, null, null, headers);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
       };
 
-      expect(TestWebSocket.ws.headers['User-Agent'], 'Custom Agent');
-      expect(TestWebSocket.ws.headers['X-HEADER'], 'VALUE');
+      expect(TestWebSocket.ws.headers!['User-Agent'], 'Custom Agent');
+      expect(TestWebSocket.ws.headers!['X-HEADER'], 'VALUE');
 
       await transport.stopAsync();
 
@@ -281,7 +283,7 @@ void main() {
       final transport = await createAndStartWebSocketAsync(logger);
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       transport.onclose = (e) {
         closeCalled = true;
         error = e;
@@ -293,7 +295,7 @@ void main() {
       };
 
       final data = 'receive data';
-      TestWebSocket.ws.ondata(data);
+      TestWebSocket.ws.ondata!(data);
 
       expect(closeCalled, true);
       expect(error, error1);
@@ -316,7 +318,7 @@ void main() {
       await TestWebSocket.ws.closeSet.future;
 
       var closeCalled = false;
-      Exception error;
+      Object? error;
       webSocket.onclose = (e) {
         closeCalled = true;
         error = e;
@@ -330,7 +332,7 @@ void main() {
       expect(error, null);
 
       final error1 = Exception('There was an error with the transport.');
-      TestWebSocket.ws.onerror(error1);
+      TestWebSocket.ws.onerror!(error1);
       final m = predicate((e) => '$e' == '$error1');
       final matcher = throwsA(m);
       await expectLater(connectPromise, matcher);
@@ -339,30 +341,29 @@ void main() {
 }
 
 WebSocketTransport createWebSocket(Logger logger,
-    [Future<String> Function() accessTokenFactory,
-    Map<String, String> headers]) {
+    [String Function()? accessTokenBuilder, Map<String, String>? headers]) {
   TestWebSocket.wsSet = Completer<void>();
   final transprot = WebSocketTransport(
       TestHttpClient(),
-      accessTokenFactory,
+      accessTokenBuilder,
       logger,
       true,
-      (url, {protocols, headers}) =>
+      (url, protocols, headers) =>
           TestWebSocket(url, protocols: protocols, headers: headers),
       headers ?? {});
   return transprot;
 }
 
 Future<WebSocketTransport> createAndStartWebSocketAsync(Logger logger,
-    [String url,
-    Future<String> Function() accessTokenFactory,
-    TransferFormat format,
-    Map<String, String> headers]) async {
-  final transprot = createWebSocket(logger, accessTokenFactory, headers);
+    [String? url,
+    String Function()? accessTokenBuilder,
+    TransferFormat? format,
+    Map<String, String>? headers]) async {
+  final transprot = createWebSocket(logger, accessTokenBuilder, headers);
   final connectFuture = transprot.connectAsync(
       url ?? 'http://example.com', format ?? TransferFormat.text);
 
-  await TestWebSocket.wsSet.future;
+  await TestWebSocket.wsSet!.future;
   await TestWebSocket.ws.openSet.future;
   TestWebSocket.ws.onopen();
   await connectFuture;

@@ -1,6 +1,6 @@
 class ClientException implements Exception {
   final String message;
-  final Uri uri;
+  final Uri? uri;
 
   ClientException(this.message, [this.uri]);
 

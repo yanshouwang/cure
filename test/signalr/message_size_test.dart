@@ -1,4 +1,5 @@
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/connection.dart';
 import 'package:mockito/mockito.dart';
 import 'package:pedantic/pedantic.dart';
 import 'package:test/test.dart';
@@ -164,7 +165,7 @@ void main() {
 }
 
 HubConnection createHubConnection(Connection connection,
-    [Logger logger, HubProtocol protocol]) {
+    [Logger? logger, HubProtocol? protocol]) {
   return HubConnection.create(
       connection, logger ?? NullLogger(), protocol ?? JsonHubProtocol());
 }

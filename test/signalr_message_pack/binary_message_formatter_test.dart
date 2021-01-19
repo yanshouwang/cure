@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:cure/signalr_message_pack.dart';
+import 'package:cure/src/signalr_message_pack/binary_message_format.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 

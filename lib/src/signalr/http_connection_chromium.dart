@@ -2,10 +2,7 @@ import 'dart:html';
 
 import 'logger.dart';
 
-String resolveUrl(String url, Logger logger) {
-  if (window == null || window.document == null) {
-    throw Exception("Cannot resolve '$url'");
-  }
+String resolveURL(String url, Logger logger) {
   // Setting the url to the href propery of an anchor tag handles normalization
   // for us. There are 3 main cases.
   // 1. Relative path normalization e.g "b" -> "http://localhost:5000/a/b"
@@ -14,6 +11,6 @@ String resolveUrl(String url, Logger logger) {
   final aTag = window.document.createElement('a') as AnchorElement;
   aTag.href = url;
 
-  logger.log(LogLevel.information, "Normalizing '${url}' to '${aTag.href}'.");
-  return aTag.href;
+  logger.log(LogLevel.information, "Normalizing '$url' to '${aTag.href}'.");
+  return aTag.href!;
 }

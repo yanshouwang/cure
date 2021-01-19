@@ -19,19 +19,16 @@ class TestHttpClient extends HttpClient {
     return _handler(request);
   }
 
-  TestHttpClient on(TestHttpHandler handler, [Object method, Object url]) {
-    // TypeScript callers won't be able to do this, because TypeScript checks this for us.
-    if (handler == null) {
-      throw "Missing required argument: 'handler'";
-    }
-
+  TestHttpClient on(TestHttpHandler handler,
+      [Object? method, Object? urlOrHandler]) {
     final oldHandler = _handler;
     final newHandler = (HttpRequest request) async {
-      if (_matches(method, request.method) && _matches(url, request.url)) {
+      if (_matches(method, request.method) &&
+          _matches(urlOrHandler, request.url)) {
         final future = handler(request, oldHandler);
 
-        Object val;
-        if (future is Future<Object>) {
+        dynamic val;
+        if (future is Future<dynamic>) {
           val = await future;
         } else {
           val = future;
@@ -58,14 +55,14 @@ class TestHttpClient extends HttpClient {
   }
 }
 
-bool _matches(Object pattern, String actual) {
+bool _matches(Object? pattern, String? actual) {
   // Null or undefined pattern matches all.
   if (pattern == null) {
     return true;
   }
 
   if (pattern is RegExp) {
-    return pattern.hasMatch(actual);
+    return pattern.hasMatch(actual!);
   } else {
     return actual == pattern;
   }

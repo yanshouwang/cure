@@ -2,14 +2,15 @@ import 'dart:typed_data';
 
 import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
-import 'package:cure/signalr_message_pack.dart';
 
-final SERIALIZED_PING_MESSAGE =
+import 'binary_message_format.dart';
+
+final _SERIALIZED_PING_MESSAGE =
     Uint8List.fromList([0x91, MessageType.ping.value]);
 
-const ERROR_RESULT = 1;
-const VOID_RESULT = 2;
-const NON_VOID_RESULT = 3;
+const _ERROR_RESULT = 1;
+const _VOID_RESULT = 2;
+const _NON_VOID_RESULT = 3;
 
 /// Implements the MessagePack Hub Protocol
 class MessagePackHubProtocol implements HubProtocol {
@@ -24,8 +25,8 @@ class MessagePackHubProtocol implements HubProtocol {
 
   /// [options] MessagePack options passed to MessagePack
   MessagePackHubProtocol({
-    MessagePackDecodeOptions decodeOptions,
-    MessagePackEncodeOptions encodeOptions,
+    MessagePackDecodeOptions? decodeOptions,
+    MessagePackEncodeOptions? encodeOptions,
   }) : _codec = MessagePackCodec(
           decodeOptions: decodeOptions,
           encodeOptions: encodeOptions,
@@ -39,8 +40,6 @@ class MessagePackHubProtocol implements HubProtocol {
   List<HubMessage> parseMessages(Object input, Logger logger) {
     // The interface does allow "string" to be passed in, but this implementation does not. So let's throw a useful error.
     if (input is Uint8List) {
-      logger ??= NullLogger();
-
       final messages = BinaryMessageFormat.parse(input);
 
       final hubMessages = <HubMessage>[];
@@ -75,7 +74,7 @@ class MessagePackHubProtocol implements HubProtocol {
       case MessageType.completion:
         return _writeCompletion(message as CompletionMessage);
       case MessageType.ping:
-        return BinaryMessageFormat.write(SERIALIZED_PING_MESSAGE);
+        return BinaryMessageFormat.write(_SERIALIZED_PING_MESSAGE);
       case MessageType.cancelInvocation:
         return _writeCancelInvocation(message as CancelInvocationMessage);
       default:
@@ -83,13 +82,13 @@ class MessagePackHubProtocol implements HubProtocol {
     }
   }
 
-  HubMessage _parseMessage(Uint8List input, Logger logger) {
+  HubMessage? _parseMessage(Uint8List input, Logger logger) {
     if (input.isEmpty) {
       throw Exception('Invalid payload.');
     }
 
     final properties = _codec.decode(input);
-    if (properties is List && properties.isNotEmpty) {
+    if (properties is List<dynamic> && properties.isNotEmpty) {
       final messageType = MessageType.fromJSON(properties[0] as int);
 
       switch (messageType) {
@@ -114,7 +113,7 @@ class MessagePackHubProtocol implements HubProtocol {
     }
   }
 
-  Map<String, String> _readHeaders(List<Object> properties) {
+  Map<String, String> _readHeaders(List<dynamic> properties) {
     try {
       final map = properties[1] as Map;
       final headers = map.cast<String, String>();
@@ -125,17 +124,17 @@ class MessagePackHubProtocol implements HubProtocol {
   }
 
   HubMessage _createInvocationMessage(
-      Map<String, String> headers, List<Object> properties) {
+      Map<String, String> headers, List<dynamic> properties) {
     // check minimum length to allow protocol to add items to the end of objects in future releases
     if (properties.length < 5) {
       throw Exception('Invalid payload for Invocation message.');
     }
 
-    final invocationId = properties[2] as String;
+    final invocationId = properties[2] as String?;
     if (invocationId != null) {
       return InvocationMessage(
         properties[3] as String,
-        properties[4] as List,
+        properties[4] as List<dynamic>,
         headers: headers,
         invocationId: invocationId,
         streamIds: [],
@@ -143,7 +142,7 @@ class MessagePackHubProtocol implements HubProtocol {
     } else {
       return InvocationMessage(
         properties[3] as String,
-        properties[4] as List,
+        properties[4] as List<dynamic>,
         headers: headers,
         streamIds: [],
       );
@@ -151,7 +150,7 @@ class MessagePackHubProtocol implements HubProtocol {
   }
 
   HubMessage _createStreamItemMessage(
-      Map<String, String> headers, List<Object> properties) {
+      Map<String, String> headers, List<dynamic> properties) {
     // check minimum length to allow protocol to add items to the end of objects in future releases
     if (properties.length < 4) {
       throw Exception('Invalid payload for StreamItem message.');
@@ -165,26 +164,26 @@ class MessagePackHubProtocol implements HubProtocol {
   }
 
   HubMessage _createCompletionMessage(
-      Map<String, String> headers, List<Object> properties) {
+      Map<String, String> headers, List<dynamic> properties) {
     // check minimum length to allow protocol to add items to the end of objects in future releases
     if (properties.length < 4) {
       throw Exception('Invalid payload for Completion message.');
     }
 
-    final resultKind = properties[3] as int;
+    final resultKind = properties[3] as int?;
 
-    if (resultKind != VOID_RESULT && properties.length < 5) {
+    if (resultKind != _VOID_RESULT && properties.length < 5) {
       throw Exception('Invalid payload for Completion message.');
     }
 
-    String error;
-    Object result;
+    String? error;
+    Object? result;
 
     switch (resultKind) {
-      case ERROR_RESULT:
-        error = properties[4];
+      case _ERROR_RESULT:
+        error = properties[4] as String?;
         break;
-      case NON_VOID_RESULT:
+      case _NON_VOID_RESULT:
         result = properties[4];
         break;
     }
@@ -199,7 +198,7 @@ class MessagePackHubProtocol implements HubProtocol {
     return completionMessage;
   }
 
-  HubMessage _createPingMessage(List<Object> properties) {
+  HubMessage _createPingMessage(List<dynamic> properties) {
     // check minimum length to allow protocol to add items to the end of objects in future releases
     if (properties.isEmpty) {
       throw Exception('Invalid payload for Ping message.');
@@ -209,7 +208,7 @@ class MessagePackHubProtocol implements HubProtocol {
     return PingMessage();
   }
 
-  HubMessage _createCloseMessage(List<Object> properties) {
+  HubMessage _createCloseMessage(List<dynamic> properties) {
     // check minimum length to allow protocol to add items to the end of objects in future releases
     if (properties.length < 2) {
       throw Exception('Invalid payload for Close message.');
@@ -217,8 +216,8 @@ class MessagePackHubProtocol implements HubProtocol {
 
     return CloseMessage(
       // Close messages have no headers.
-      allowReconnect: properties.length >= 3 ? properties[2] : null,
-      error: properties[1],
+      allowReconnect: properties.length >= 3 ? properties[2] as bool? : null,
+      error: properties[1] as String?,
     );
   }
 
@@ -283,14 +282,14 @@ class MessagePackHubProtocol implements HubProtocol {
 
   Uint8List _writeCompletion(CompletionMessage message) {
     final resultKind = message.error != null
-        ? ERROR_RESULT
+        ? _ERROR_RESULT
         : message.result != null
-            ? NON_VOID_RESULT
-            : VOID_RESULT;
+            ? _NON_VOID_RESULT
+            : _VOID_RESULT;
 
-    Uint8List payload;
+    late Uint8List payload;
     switch (resultKind) {
-      case ERROR_RESULT:
+      case _ERROR_RESULT:
         payload = _codec.encode([
           MessageType.completion.value,
           message.headers ?? {},
@@ -299,7 +298,7 @@ class MessagePackHubProtocol implements HubProtocol {
           message.error,
         ]);
         break;
-      case VOID_RESULT:
+      case _VOID_RESULT:
         payload = _codec.encode([
           MessageType.completion.value,
           message.headers ?? {},
@@ -307,7 +306,7 @@ class MessagePackHubProtocol implements HubProtocol {
           resultKind,
         ]);
         break;
-      case NON_VOID_RESULT:
+      case _NON_VOID_RESULT:
         payload = _codec.encode([
           MessageType.completion.value,
           message.headers ?? {},

@@ -1,7 +1,8 @@
 import 'dart:math';
 
+import 'package:cure/core.dart';
+
 import 'base_crc.dart';
-import 'utils.dart';
 
 class MappingCRC extends BaseCRC {
   final Map<int, int> _map;
@@ -22,7 +23,7 @@ class MappingCRC extends BaseCRC {
       }
       // 本字节的 CRC, 等于上一字节的 CRC 左移八位, 与上一字节的 CRC 高八位同本字节异或后对应 CRC 的异或值
       final key = (crc >> digits2) & 0xff ^ item;
-      final value = _map[key];
+      final value = _map[key]!;
       crc = (crc << 8) ^ value;
     }
     crc >>= digits1;

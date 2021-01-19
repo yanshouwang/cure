@@ -3,14 +3,20 @@ import 'dart:typed_data';
 
 import 'package:cure/convert.dart';
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/connection.dart';
+import 'package:cure/src/signalr/handshake_protocol.dart';
+import 'package:cure/src/signalr/text_message_format.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:pedantic/pedantic.dart';
 import 'package:test/test.dart';
 
 import 'common.dart';
+import 'hub_connection_test.mocks.dart';
 import 'test_connection.dart';
 import 'utils.dart';
 
+@GenerateMocks([StreamSubscriber, Logger])
 void main() {
   group('# startAsync', () {
     test('# sends handshake message', () async {
@@ -330,7 +336,7 @@ void main() {
     test('# can process handshake and additional messages from binary',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        Uint8List receivedProcotolData;
+        late Uint8List receivedProcotolData;
 
         final mockProtocol = TestProtocol(TransferFormat.binary);
         mockProtocol.onreceive = (d) => receivedProcotolData = d as Uint8List;
@@ -465,7 +471,7 @@ void main() {
     });
     test('# can process handshake and additional messages from text', () async {
       await VerifyLogger.runAsync((logger) async {
-        String receivedProcotolData;
+        String? receivedProcotolData;
 
         final mockProtocol = TestProtocol(TransferFormat.text);
         mockProtocol.onreceive = (d) => receivedProcotolData = d as String;
@@ -658,13 +664,13 @@ void main() {
         try {
           await hubConnection.startAsync();
 
-          var streamItem = '';
-          Object streamError;
+          String? streamItem = '';
+          Object? streamError;
           final subject = Subject();
-          final subscriber = MockSubscriber();
+          final subscriber = MockStreamSubscriber();
           when(subscriber.complete()).thenAnswer((_) {});
           when(subscriber.error(any)).thenAnswer((i) {
-            final e = i.positionalArguments[0] as Exception;
+            final e = i.positionalArguments[0] as Exception?;
             streamError = e;
           });
           when(subscriber.next(any)).thenAnswer((i) {
@@ -740,7 +746,7 @@ void main() {
 
           final invokeFuture = hubConnection.invokeAsync('testMethod');
           // Typically this would be called by the transport
-          connection.onclose(Exception('Connection lost'));
+          connection.onclose!(Exception('Connection lost'));
 
           final m = predicate((e) => '$e' == 'Exception: Connection lost');
           final matcher = throwsA(m);
@@ -927,8 +933,8 @@ void main() {
         try {
           await hubConnection.startAsync();
 
-          var value = '';
-          hubConnection.on('message', ([v]) => value = v[0]);
+          String? value = '';
+          hubConnection.on('message', (v) => value = v[0] as String?);
 
           connection.receive({
             'arguments': ['test'],
@@ -948,7 +954,7 @@ void main() {
         final connection = TestConnection(false);
         final hubConnection = createHubConnection(connection, logger);
         try {
-          Exception closeError;
+          Object? closeError;
           hubConnection.onclose((e) => closeError = e);
 
           var startCompleted = false;
@@ -975,7 +981,7 @@ void main() {
         final hubConnection = createHubConnection(connection, logger);
         try {
           var isClosed = false;
-          Exception closeError;
+          Object? closeError;
           hubConnection.onclose((e) {
             isClosed = true;
             closeError = e;
@@ -1000,7 +1006,7 @@ void main() {
         final hubConnection = createHubConnection(connection, logger);
         try {
           var isClosed = false;
-          Exception closeError;
+          Object? closeError;
           hubConnection.onclose((e) {
             isClosed = true;
             closeError = e;
@@ -1113,10 +1119,6 @@ void main() {
         try {
           await hubConnection.startAsync();
 
-          hubConnection.on(null, null);
-          hubConnection.on('message', null);
-          hubConnection.on(null, (_) => {});
-
           // invoke a method to make sure we are not trying to use null/undefined
           connection.receive({
             'arguments': [],
@@ -1126,11 +1128,7 @@ void main() {
             'type': MessageType.invocation,
           });
 
-          expect(warnings, ["No client method with the name 'message' found."]);
-
-          hubConnection.off(null, null);
           hubConnection.off('message', null);
-          hubConnection.off(null, (_) => {});
         } finally {
           await hubConnection.stopAsync();
         }
@@ -1178,8 +1176,7 @@ void main() {
           await hubConnection.startAsync();
 
           final observer = TestObserver();
-          hubConnection
-              .stream<Object>('testMethod', ['arg', 42]).subscribe(observer);
+          hubConnection.stream('testMethod', ['arg', 42]).subscribe(observer);
 
           connection.receive({
             'type': MessageType.completion,
@@ -1187,9 +1184,8 @@ void main() {
             'error': 'foo'
           });
 
-          final m = predicate((e) => '$e' == 'Exception: foo');
-          final matcher = throwsA(m);
-          await expectLater(observer.completed, matcher);
+          final matcher = predicate((e) => '$e' == 'Exception: foo');
+          await expectLater(observer.completed, throwsA(matcher));
         } finally {
           await hubConnection.stopAsync();
         }
@@ -1203,8 +1199,7 @@ void main() {
           await hubConnection.startAsync();
 
           final observer = TestObserver();
-          hubConnection
-              .stream<Object>('testMethod', ['arg', 42]).subscribe(observer);
+          hubConnection.stream('testMethod', ['arg', 42]).subscribe(observer);
 
           connection.receive({
             'type': MessageType.completion,
@@ -1226,13 +1221,15 @@ void main() {
           await hubConnection.startAsync();
 
           final observer = TestObserver();
-          hubConnection.stream<Object>('testMethod').subscribe(observer);
+          hubConnection.stream('testMethod').subscribe(observer);
+
           await hubConnection.stopAsync();
 
           final m = predicate((e) =>
               '$e' ==
               'Exception: Invocation canceled due to the underlying connection being closed.');
           final matcher = throwsA(m);
+
           await expectLater(observer.completed, matcher);
         } finally {
           await hubConnection.stopAsync();
@@ -1248,10 +1245,10 @@ void main() {
           await hubConnection.startAsync();
 
           final observer = TestObserver();
-          hubConnection.stream<Object>('testMethod').subscribe(observer);
+          hubConnection.stream('testMethod').subscribe(observer);
 
           // Typically this would be called by the transport
-          connection.onclose(Exception('Connection lost'));
+          connection.onclose!(Exception('Connection lost'));
 
           final m = predicate((e) => '$e' == 'Exception: Connection lost');
           final matcher = throwsA(m);
@@ -1269,7 +1266,7 @@ void main() {
           await hubConnection.startAsync();
 
           final observer = TestObserver();
-          hubConnection.stream<Object>('testMethod').subscribe(observer);
+          hubConnection.stream('testMethod').subscribe(observer);
 
           connection.receive({
             'type': MessageType.streamItem,
@@ -1314,7 +1311,7 @@ void main() {
 
           // Typically this would be called by the transport
           // triggers observer.error()
-          connection.onclose(Exception('Connection lost'));
+          connection.onclose!(Exception('Connection lost'));
         } finally {
           await hubConnection.stopAsync();
         }
@@ -1395,7 +1392,7 @@ void main() {
           hubConnection.onclose((e) => invocations++);
           hubConnection.onclose((e) => invocations++);
           // Typically this would be called by the transport
-          connection.onclose(null);
+          connection.onclose!(null);
           expect(invocations, 2);
         } finally {
           await hubConnection.stopAsync();
@@ -1409,28 +1406,12 @@ void main() {
         await hubConnection.startAsync();
 
         try {
-          Exception error;
+          Object? error;
           hubConnection.onclose((e) => error = e);
 
           // Typically this would be called by the transport
-          connection.onclose(Exception('Test error.'));
+          connection.onclose!(Exception('Test error.'));
           expect('$error', 'Exception: Test error.');
-        } finally {
-          await hubConnection.stopAsync();
-        }
-      });
-    });
-    test('# ignores null callbacks', () async {
-      await VerifyLogger.runAsync((logger) async {
-        final connection = TestConnection();
-        final hubConnection = createHubConnection(connection, logger);
-        try {
-          hubConnection.onclose(null);
-          // Typically this would be called by the transport
-          //hubConnection.connectionState = HubConnectionState.connected;
-          await hubConnection.startAsync();
-          connection.onclose(null);
-          // expect no errors
         } finally {
           await hubConnection.stopAsync();
         }
@@ -1443,10 +1424,10 @@ void main() {
         await hubConnection.startAsync();
 
         try {
-          HubConnectionState state;
+          HubConnectionState? state;
           hubConnection.onclose((e) => state = hubConnection.state);
           // Typically this would be called by the transport
-          connection.onclose(null);
+          connection.onclose!(null);
 
           expect(state, HubConnectionState.disconnected);
         } finally {
@@ -1488,16 +1469,14 @@ void main() {
           final timeoutInMilliseconds = 400;
           hubConnection.serverTimeoutInMilliseconds = timeoutInMilliseconds;
 
-          final completer = Completer<Exception>();
+          final completer = Completer();
           hubConnection.onclose((e) => completer.complete(e));
 
           await hubConnection.startAsync();
 
           final duration = Duration(milliseconds: 10);
-          final pingInterval = Timer.periodic(
-              duration,
-              (timer) async =>
-                  await connection.receive({'type': MessageType.ping}));
+          final pingInterval = Timer.periodic(duration,
+              (timer) => connection.receive({'type': MessageType.ping}));
 
           await delayUntilAsync(timeoutInMilliseconds * 2);
 
@@ -1520,7 +1499,7 @@ void main() {
         try {
           hubConnection.serverTimeoutInMilliseconds = 100;
 
-          final completer = Completer<Exception>();
+          final completer = Completer();
           hubConnection.onclose((e) => completer.complete(e));
 
           await hubConnection.startAsync();
@@ -1538,7 +1517,7 @@ void main() {
 }
 
 HubConnection createHubConnection(Connection connection,
-    [Logger logger, HubProtocol protocol]) {
+    [Logger? logger, HubProtocol? protocol]) {
   return HubConnection.create(
       connection, logger ?? NullLogger(), protocol ?? JsonHubProtocol());
 }
@@ -1551,7 +1530,7 @@ class TestProtocol implements HubProtocol {
   @override
   TransferFormat transferFormat;
 
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   TestProtocol(this.transferFormat)
       : name = 'TestProtocol',
@@ -1567,17 +1546,17 @@ class TestProtocol implements HubProtocol {
 
   @override
   Object writeMessage(HubMessage message) {
-    return null;
+    return message;
   }
 }
 
-class TestObserver implements StreamSubscriber<Object> {
+class TestObserver implements StreamSubscriber<dynamic> {
   @override
-  bool closed;
-  List<Object> itemsReceived;
-  final Completer<List<Object>> _itemsSource;
+  bool? closed;
+  List<dynamic> itemsReceived;
+  final Completer<List<dynamic>> _itemsSource;
 
-  Future<List<Object>> get completed {
+  Future<List<dynamic>> get completed {
     return _itemsSource.future;
   }
 
@@ -1585,17 +1564,16 @@ class TestObserver implements StreamSubscriber<Object> {
       : closed = false,
         itemsReceived = [],
         _itemsSource = Completer() {
-    // HACK: CATCH EXCEPTION IMMEDIATELY
-    _itemsSource.future.catchError((_) {});
+    unawaited(completed.catchError((_) => []));
   }
 
   @override
-  void next(Object value) {
+  void next(dynamic value) {
     itemsReceived.add(value);
   }
 
   @override
-  void error(Exception error) {
+  void error(Object error) {
     _itemsSource.completeError(error);
   }
 
@@ -1610,7 +1588,7 @@ class NullSubscriber<T> extends Fake implements StreamSubscriber<T> {
 
   NullSubscriber._();
 
-  factory NullSubscriber() => _instance;
+  factory NullSubscriber() => _instance as NullSubscriber<T>;
 
   @override
   void next(T value) {}
@@ -1619,7 +1597,3 @@ class NullSubscriber<T> extends Fake implements StreamSubscriber<T> {
   @override
   void complete() {}
 }
-
-class MockSubscriber<T> extends Mock implements StreamSubscriber<T> {}
-
-class MockLogger extends Mock implements Logger {}

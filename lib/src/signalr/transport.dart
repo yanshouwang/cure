@@ -1,7 +1,7 @@
 /// An abstraction over the behavior of transports. This is designed to support the framework and not intended for use by applications.
 abstract class Transport {
-  void Function(Object data) onreceive;
-  void Function(Exception error) onclose;
+  void Function(Object data)? onreceive;
+  void Function(Object? error)? onclose;
 
   Future<void> connectAsync(String url, TransferFormat transferFormat);
   Future<void> sendAsync(Object data);
@@ -9,26 +9,26 @@ abstract class Transport {
 }
 
 /// Specifies a specific HTTP transport type.
-abstract class HttpTransportType {
-  String get name;
-  int get value;
-
-  String toJSON();
+class HttpTransportType {
+  final String name;
+  final int value;
 
   /// Specifies no transport preference.
-  static const HttpTransportType none = _HttpTransportType('None', 0);
+  static const HttpTransportType none = HttpTransportType('None', 0);
 
   /// Specifies the WebSockets transport.
   static const HttpTransportType webSockets =
-      _HttpTransportType('WebSockets', 1);
+      HttpTransportType('WebSockets', 1);
 
   /// Specifies the Server-Sent Events transport.
   static const HttpTransportType serverSentEvents =
-      _HttpTransportType('ServerSentEvents', 2);
+      HttpTransportType('ServerSentEvents', 2);
 
   /// Specifies the Long Polling transport.
   static const HttpTransportType longPolling =
-      _HttpTransportType('LongPolling', 4);
+      HttpTransportType('LongPolling', 4);
+
+  const HttpTransportType(this.name, this.value);
 
   factory HttpTransportType.fromJSON(String name) {
     switch (name) {
@@ -44,17 +44,7 @@ abstract class HttpTransportType {
         throw ArgumentError.value(name);
     }
   }
-}
 
-class _HttpTransportType implements HttpTransportType {
-  @override
-  final String name;
-  @override
-  final int value;
-
-  const _HttpTransportType(this.name, this.value);
-
-  @override
   String toJSON() {
     return name;
   }
@@ -66,17 +56,17 @@ class _HttpTransportType implements HttpTransportType {
 }
 
 /// Specifies the transfer format for a connection.
-abstract class TransferFormat {
-  String get name;
-  int get value;
+class TransferFormat {
+  final String name;
+  final int value;
 
   /// Specifies that only text data will be transmitted over the connection.
-  static const TransferFormat text = _TransferFormat('Text', 1);
+  static const TransferFormat text = TransferFormat('Text', 1);
 
   /// Specifies that binary data will be transmitted over the connection.
-  static const TransferFormat binary = _TransferFormat('Binary', 2);
+  static const TransferFormat binary = TransferFormat('Binary', 2);
 
-  String toJSON();
+  const TransferFormat(this.name, this.value);
 
   factory TransferFormat.fromJSON(String name) {
     switch (name) {
@@ -88,17 +78,7 @@ abstract class TransferFormat {
         throw ArgumentError.value(name);
     }
   }
-}
 
-class _TransferFormat implements TransferFormat {
-  @override
-  final String name;
-  @override
-  final int value;
-
-  const _TransferFormat(this.name, this.value);
-
-  @override
   String toJSON() {
     return name;
   }

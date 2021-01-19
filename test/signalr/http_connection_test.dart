@@ -2,13 +2,17 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/http_connection.dart';
+import 'package:cure/src/signalr/utils.dart';
 import 'package:cure/sse.dart';
 import 'package:cure/ws.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 
 import 'common.dart';
+import 'http_connection_test.mocks.dart';
 import 'test_http_client.dart';
 import 'test_web_socket.dart';
 import 'utils.dart';
@@ -39,6 +43,7 @@ NegotiateResponse get DEFAULT_NEGOTIATE_RESPONSE => NegotiateResponse(
       negotiateVersion: 1,
     );
 
+@GenerateMocks([Transport, Logger])
 void main() {
   group('# HttpConnection', () {
     test(
@@ -93,7 +98,7 @@ void main() {
           await expectLater(
               connection.startAsync(TransferFormat.text), matcher);
         } finally {
-          options.transport.onclose.call(null);
+          (options.transport as Transport).onclose!(null);
           await connection.stopAsync();
         }
       });
@@ -184,7 +189,7 @@ void main() {
       await VerifyLogger.runAsync((loggerImpl) async {
         var negotiateCount = 0;
         final options = HttpConnectionOptions(
-            webSocket: (url, {protocols, headers}) =>
+            webSocket: (_, __, ___) =>
                 throw Exception('There was an error with the transport.'),
             httpClient: TestHttpClient()
                 .on((r, next) {
@@ -215,9 +220,9 @@ void main() {
       await VerifyLogger.runAsync((loggerImpl) async {
         var negotiateCount = 0;
         final options = HttpConnectionOptions(
-            eventSource: (_, {headers, withCredentials}) =>
+            eventSource: (_, __, ___) =>
                 throw Exception("Don't allow ServerSentEvents."),
-            webSocket: (_, {protocols, headers}) =>
+            webSocket: (_, __, ___) =>
                 throw Exception("Don't allow Websockets."),
             httpClient: TestHttpClient()
                 .on((r, next) {
@@ -248,9 +253,9 @@ void main() {
       await VerifyLogger.runAsync((logger) async {
         var negotiateCount = 0;
         final options = HttpConnectionOptions(
-            eventSource: (_, {headers, withCredentials}) =>
+            eventSource: (_, __, ___) =>
                 throw Exception("Don't allow ServerSentEvents."),
-            webSocket: (_, {protocols, headers}) =>
+            webSocket: (_, __, ___) =>
                 throw Exception("Don't allow Websockets."),
             httpClient: TestHttpClient()
                 .on((r, next) {
@@ -323,7 +328,7 @@ void main() {
 
           await startFuture;
         } finally {
-          options.transport.onclose.call(null);
+          (options.transport as Transport).onclose!(null);
           await connection.stopAsync();
         }
       });
@@ -377,7 +382,7 @@ void main() {
           var negotiateResponse = DEFAULT_NEGOTIATE_RESPONSE;
 
           // Remove the requested transport from the response
-          negotiateResponse.availableTransports
+          negotiateResponse.availableTransports!
               .removeWhere((e) => e.transport == transport);
 
           final options = HttpConnectionOptions(
@@ -391,7 +396,7 @@ void main() {
 
           final m = predicate((e) =>
               '$e' ==
-              "Exception: Unable to connect to the server with any of the available transports. ${negotiateResponse.availableTransports[0].transport} failed: Exception: '${negotiateResponse.availableTransports[0].transport}' is disabled by the client. ${negotiateResponse.availableTransports[1].transport} failed: Exception: '${negotiateResponse.availableTransports[1].transport}' is disabled by the client.");
+              "Exception: Unable to connect to the server with any of the available transports. ${negotiateResponse.availableTransports![0].transport} failed: Exception: '${negotiateResponse.availableTransports![0].transport}' is disabled by the client. ${negotiateResponse.availableTransports![1].transport} failed: Exception: '${negotiateResponse.availableTransports![1].transport}' is disabled by the client.");
           final matcher = throwsA(m);
           await expectLater(
               connection.startAsync(TransferFormat.text), matcher);
@@ -402,11 +407,11 @@ void main() {
       });
     });
 
-    [Tuple2('null', null), Tuple2('0', 0)].forEach((element) {
+    [Tuple2('null', null)].forEach((element) {
       test('# can be started when transport mask is ${element.item1}',
           () async {
         FakeWebSocket1.wsSet = Completer();
-        final ws = (url, {protocols, headers}) => FakeWebSocket1();
+        final ws = (_, __, ___) => FakeWebSocket1();
 
         await VerifyLogger.runAsync((logger) async {
           final options = HttpConnectionOptions(
@@ -457,11 +462,11 @@ void main() {
         () async {
       await VerifyLogger.runAsync((logger) async {
         final options = HttpConnectionOptions(
-          webSocket: (url, {protocols, headers}) =>
+          webSocket: (_, __, ___) =>
               throw Exception('WebSocket constructor called.'),
           httpClient: TestHttpClient()
-              .on((r, next) => throw Exception('Should not be called'), 'POST')
-              .on((r, next) => throw Exception('Should not be called'), 'GET'),
+              .on((_, __) => throw Exception('Should not be called'), 'POST')
+              .on((_, __) => throw Exception('Should not be called'), 'GET'),
           logger: logger,
           skipNegotiation: true,
           transport: HttpTransportType.webSockets,
@@ -498,9 +503,6 @@ void main() {
     });
     test('# redirects to url when negotiate returns it', () async {
       await VerifyLogger.runAsync((logger) async {
-        // HACK: Looks like we shoud wait until Client received the last request.
-        final completer = Completer();
-
         var firstNegotiate = true;
         var firstPoll = true;
         final httpClient = TestHttpClient().on(
@@ -536,10 +538,8 @@ void main() {
         );
 
         final connection = HttpConnection('http://tempuri.org', options);
-        connection.onclose = (error) => completer.complete();
         try {
           await connection.startAsync(TransferFormat.text);
-          await completer.future;
 
           expect(httpClient.requests.length, 4);
           expect(httpClient.requests[0].url,
@@ -582,9 +582,6 @@ void main() {
     test('# redirects to url when negotiate returns it with access token',
         () async {
       await VerifyLogger.runAsync((logger) async {
-        // HACK: Looks like we shoud wait until Client received the last request.
-        final completer = Completer();
-
         var firstNegotiate = true;
         var firstPoll = true;
         final httpClient = TestHttpClient().on((r, next) {
@@ -592,7 +589,7 @@ void main() {
             firstNegotiate = false;
 
             if (r.headers != null &&
-                r.headers['Authorization'] != 'Bearer firstSecret') {
+                r.headers!['Authorization'] != 'Bearer firstSecret') {
               return HttpResponse(401, 'Unauthorized', '');
             }
 
@@ -603,7 +600,7 @@ void main() {
           }
 
           if (r.headers != null &&
-              r.headers['Authorization'] != 'Bearer secondSecret') {
+              r.headers!['Authorization'] != 'Bearer secondSecret') {
             return HttpResponse(401, 'Unauthorized', '');
           }
 
@@ -618,7 +615,7 @@ void main() {
           );
         }, 'POST', RegExp('/negotiate')).on((r, next) {
           if (r.headers != null &&
-              r.headers['Authorization'] != 'Bearer secondSecret') {
+              r.headers!['Authorization'] != 'Bearer secondSecret') {
             return HttpResponse(401, 'Unauthorized', '');
           }
 
@@ -630,17 +627,15 @@ void main() {
         }, 'GET').on((r, next) => HttpResponse(202), 'DELETE');
 
         final options = HttpConnectionOptions(
-          accessTokenFactory: () => Future.value('firstSecret'),
+          accessTokenBuilder: () => 'firstSecret',
           httpClient: httpClient,
           logger: logger,
           transport: HttpTransportType.longPolling,
         );
 
         final connection = HttpConnection('http://tempuri.org', options);
-        connection.onclose = (e) => completer.complete();
         try {
           await connection.startAsync(TransferFormat.text);
-          await completer.future;
 
           expect(httpClient.requests.length, 4);
           expect(httpClient.requests[0].url,
@@ -674,72 +669,6 @@ void main() {
         final matcher = throwsA(m);
         await expectLater(connection.startAsync(TransferFormat.text), matcher);
       }, ['Failed to start the connection: Exception: Negotiate error.']);
-    });
-    test(
-        '# authorization header removed when token factory returns null and using LongPolling',
-        () async {
-      await VerifyLogger.runAsync((logger) async {
-        final availableTransport = AvailableTransport(
-          HttpTransportType.longPolling,
-          [TransferFormat.text],
-        );
-
-        // HACK: Looks like we shoud wait until Client received the last request.
-        final completer = Completer();
-
-        var httpClientGetCount = 0;
-        var accessTokenFactoryCount = 0;
-        final options = HttpConnectionOptions(
-          accessTokenFactory: () {
-            accessTokenFactoryCount++;
-            if (accessTokenFactoryCount == 1) {
-              return Future.value('A token value');
-            } else {
-              // Return a null value after the first call to test the header being removed
-              return Future.value(null);
-            }
-          },
-          httpClient: TestHttpClient()
-              .on(
-                  (r, next) => NegotiateResponse(
-                        connectionId: '42',
-                        availableTransports: [availableTransport],
-                      ),
-                  'POST')
-              .on((r, next) {
-            httpClientGetCount++;
-            final authorizationValue = r.headers['Authorization'];
-            if (httpClientGetCount == 1) {
-              if (authorizationValue != null) {
-                fail(
-                    'First long poll request should have a authorization header.');
-              }
-              // First long polling request must succeed so start completes
-              return '';
-            } else {
-              // Check second long polling request has its header removed
-              if (authorizationValue != null) {
-                fail(
-                    'Second long poll request should have no authorization header.');
-              }
-              completer.complete();
-            }
-          }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
-          logger: logger,
-        );
-
-        final connection = HttpConnection('http://tempuri.org', options);
-        try {
-          await connection.startAsync(TransferFormat.text);
-          await completer.future;
-
-          final matcher = greaterThanOrEqualTo(2);
-          expect(httpClientGetCount, matcher);
-          expect(accessTokenFactoryCount, matcher);
-        } finally {
-          await connection.stopAsync();
-        }
-      });
     });
     test('# sets inherentKeepAlive feature when using LongPolling', () async {
       await VerifyLogger.runAsync((logger) async {
@@ -800,8 +729,8 @@ void main() {
             .on((r, next) {
           httpClientGetCount++;
           if (httpClientGetCount == 1) {
-            if (connection.transport.onreceive != null &&
-                connection.transport.onclose != null) {
+            if (connection.$transport!.onreceive != null &&
+                connection.$transport!.onclose != null) {
               handlersSet = true;
             }
             // First long polling request must succeed so start completes
@@ -959,7 +888,7 @@ void main() {
 
           await startFuture;
         } finally {
-          options.transport.onclose(null);
+          (options.transport as Transport).onclose!(null);
           await connection.stopAsync();
         }
       });
@@ -992,16 +921,13 @@ void main() {
 
           await startFuture;
         } finally {
-          options.transport.onclose(null);
+          (options.transport as Transport).onclose!(null);
           await connection.stopAsync();
         }
       });
     });
     test('# fallback changes connectionId property', () async {
       await VerifyLogger.runAsync((logger) async {
-        // HACK: Looks like we shoud wait until Client received the last request.
-        final completer = Completer();
-
         final availableTransports = [
           AvailableTransport(
             HttpTransportType.webSockets,
@@ -1014,10 +940,10 @@ void main() {
         ];
         var negotiateCount = 0;
         var getCount = 0;
-        HttpConnection connection;
-        String connectionId;
+        late HttpConnection connection;
+        String? connectionId;
         final options = HttpConnectionOptions(
-            webSocket: (url, {protocols, headers}) =>
+            webSocket: (url, protocols, headers) =>
                 TestWebSocket(url, protocols: protocols, headers: headers),
             httpClient: TestHttpClient().on((r, next) {
               negotiateCount++;
@@ -1032,7 +958,6 @@ void main() {
               if (getCount == 1) {
                 return HttpResponse(200);
               }
-              connectionId = connection.connectionId;
               return HttpResponse(204);
             }, 'GET').on((r, next) => HttpResponse(202), 'DELETE'),
             logger: logger);
@@ -1040,19 +965,17 @@ void main() {
         TestWebSocket.wsSet = Completer();
 
         connection = HttpConnection('http://tempuri.org', options);
-        connection.onclose = (e) => completer.complete();
         final startFuture = connection.startAsync(TransferFormat.text);
 
-        await TestWebSocket.wsSet.future;
+        await TestWebSocket.wsSet!.future;
         await TestWebSocket.ws.closeSet.future;
         final error = Exception('There was an error with the transport.');
-        TestWebSocket.ws.onerror(error);
+        TestWebSocket.ws.onerror!(error);
 
         try {
           await startFuture;
-          await completer.future;
-          // ignore: empty_catches
-        } catch (e) {}
+          connectionId = connection.connectionId;
+        } catch (_) {}
 
         expect(negotiateCount, 2);
         expect(connectionId, '2');
@@ -1062,10 +985,10 @@ void main() {
     });
     test('# user agent header set on negotiate', () async {
       await VerifyLogger.runAsync((logger) async {
-        var userAgentValue = '';
+        String? userAgentValue = '';
         final options = HttpConnectionOptions(
             httpClient: TestHttpClient().on((r, next) {
-              userAgentValue = r.headers['User-Agent'];
+              userAgentValue = r.headers!['User-Agent'];
               return HttpResponse(200, '', '{\"error\":\"nope\"}');
             }, 'POST'),
             logger: logger);
@@ -1161,7 +1084,7 @@ void main() {
     test('# send after restarting connection works', () async {
       await VerifyLogger.runAsync((logger) async {
         final options = HttpConnectionOptions(
-            webSocket: (url, {protocols, headers}) =>
+            webSocket: (url, protocols, headers) =>
                 TestWebSocket(url, protocols: protocols, headers: headers),
             httpClient: TestHttpClient()
                 .on((r, next) => DEFAULT_NEGOTIATE_RESPONSE, 'POST')
@@ -1174,7 +1097,7 @@ void main() {
 
         TestWebSocket.wsSet = Completer();
         var startFuture = connection.startAsync(TransferFormat.text);
-        await TestWebSocket.wsSet.future;
+        await TestWebSocket.wsSet!.future;
         await TestWebSocket.ws.openSet.future;
         TestWebSocket.ws.onopen();
         await startFuture;
@@ -1186,24 +1109,17 @@ void main() {
         await closeCompleter.future;
 
         startFuture = connection.startAsync(TransferFormat.text);
-        await TestWebSocket.wsSet.future;
+        await TestWebSocket.wsSet!.future;
         TestWebSocket.ws.onopen();
         await startFuture;
         await connection.sendAsync('text');
       });
     });
     group('# constructor', () {
-      test('# throws if no url is provided', () {
-        final m = predicate(
-            (e) => '$e' == "Exception: The 'url' argument is required.");
-        final matcher = throwsA(m);
-        expect(() => HttpConnection(null), matcher);
-      });
       test('# uses EventSource constructor from options if provided', () async {
         await VerifyLogger.runAsync((logger) async {
           final options = HttpConnectionOptions(
-              eventSource: (url, {headers, withCredentials}) =>
-                  FakeEventSource1(),
+              eventSource: (_, __, ___) => FakeEventSource1(),
               httpClient: TestHttpClient().on((r, next) {
                 return NegotiateResponse(
                   availableTransports: [
@@ -1236,7 +1152,7 @@ void main() {
       test('# uses WebSocket constructor from options if provided', () async {
         await VerifyLogger.runAsync((logger) async {
           final options = HttpConnectionOptions(
-              webSocket: (url, {protocols, headers}) => FakeWebSocket2(),
+              webSocket: (_, __, ___) => FakeWebSocket2(),
               logger: logger,
               skipNegotiation: true,
               transport: HttpTransportType.webSockets);
@@ -1513,18 +1429,14 @@ void main() {
   });
 }
 
-class MockTransport extends Mock implements Transport {}
-
-class MockLogger extends Mock implements Logger {}
-
 class FakeTransport1 extends Fake implements Transport {
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     return Future.value();
   }
 
@@ -1542,14 +1454,14 @@ class FakeTransport1 extends Fake implements Transport {
 class FakeTransport2 extends Fake implements Transport {
   final Completer<String> connectUrl;
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   FakeTransport2() : connectUrl = Completer();
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     connectUrl.complete(url);
     return Future.value();
   }
@@ -1568,14 +1480,14 @@ class FakeTransport2 extends Fake implements Transport {
 class FakeTransport3 extends Fake implements Transport {
   bool handlersSet;
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   FakeTransport3() : handlersSet = false;
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     if (onreceive != null && onclose != null) {
       handlersSet = true;
     }
@@ -1596,12 +1508,12 @@ class FakeTransport3 extends Fake implements Transport {
 
 class FakeTransport4 extends Fake implements Transport {
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     return Future.value();
   }
 
@@ -1618,16 +1530,16 @@ class FakeTransport4 extends Fake implements Transport {
 }
 
 class FakeTransport5 extends Fake implements Transport {
-  String connectUrl;
+  String? connectUrl;
   @override
-  void Function(Exception error) onclose;
+  void Function(Object? error)? onclose;
   @override
-  void Function(Object data) onreceive;
+  void Function(Object data)? onreceive;
 
   FakeTransport5() : connectUrl = '';
 
   @override
-  Future<void> connectAsync(String url, TransferFormat transferFormat) {
+  Future<void> connectAsync(String? url, TransferFormat transferFormat) {
     connectUrl = url;
     return Future.value();
   }
@@ -1645,35 +1557,35 @@ class FakeTransport5 extends Fake implements Transport {
 }
 
 class FakeWebSocket1 extends Fake implements WebSocket {
-  static FakeWebSocket1 ws;
-  static Completer<void> wsSet;
+  static late FakeWebSocket1 ws;
+  static late Completer<void> wsSet;
 
   @override
-  void Function(Exception error) onerror;
+  void Function(Object? error)? onerror;
   @override
-  void Function(Object data) ondata;
+  void Function(Object? data)? ondata;
   @override
-  void Function(int code, String reason) onclose;
+  void Function(int? code, String? reason)? onclose;
 
-  Object Function() websocketOpen;
+  late Object? Function() websocketOpen;
   final SyncPoint sync;
 
-  void Function() _onopen;
+  void Function()? _onopen;
   var openSet = Completer<void>();
   @override
-  void Function() get onopen {
+  void Function()? get onopen {
     return _onopen;
   }
 
   @override
-  set onopen(void Function() value) {
+  set onopen(void Function()? value) {
     _onopen = value;
-    websocketOpen = () => _onopen();
+    websocketOpen = () => _onopen!();
     sync.$continue();
   }
 
   @override
-  void close([int code, String reason]) {}
+  void close([int? code, String? reason]) {}
 
   FakeWebSocket1()
       : sync = SyncPoint(),

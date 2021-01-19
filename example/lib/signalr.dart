@@ -1,10 +1,11 @@
 import 'package:cure/signalr.dart';
 
 void main() async {
-  final connection = HubConnectionBuilder()
-      .withURL('url')
-      //.withHubProtocol(MessagePackHubProtocol())
-      .build();
+  final builder = HubConnectionBuilder()
+    ..url = 'url'
+    ..logLevel = LogLevel.information
+    ..reconnect = true;
+  final connection = builder.build();
   connection.on('send', (args) => print(args));
   await connection.startAsync();
   await connection.sendAsync('send', ['Hello', 123]);

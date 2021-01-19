@@ -1,4 +1,4 @@
-import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/abort_signal.dart';
 import 'package:test/test.dart';
 
 void main() {

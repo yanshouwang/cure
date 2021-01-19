@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:pedantic/pedantic.dart';
+import 'package:tuple/tuple.dart';
 
 import 'connection.dart';
 import 'handshake_protocol.dart';
@@ -9,7 +10,6 @@ import 'logger.dart';
 import 'retry_policy.dart';
 import 'stream.dart';
 import 'subject.dart';
-import 'utils.dart';
 
 const DEFAULT_TIMEOUT_IN_MS = 30 * 1000;
 const DEFAULT_PING_INTERVAL_IN_MS = 15 * 1000;
@@ -21,23 +21,26 @@ abstract class HubConnection {
   /// If this timeout elapses without receiving any messages from the server, the connection will be terminated with an error.
   ///
   /// The default timeout value is 30,000 milliseconds (30 seconds).
-  int serverTimeoutInMilliseconds;
+  int get serverTimeoutInMilliseconds;
+  set serverTimeoutInMilliseconds(int value);
 
   /// Default interval at which to ping the server.
   ///
   /// The default value is 15,000 milliseconds (15 seconds).
   ///
   /// Allows the server to detect hard disconnects (like when a client unplugs their computer).
-  int keepAliveIntervalInMilliseconds;
+  int get keepAliveIntervalInMilliseconds;
+  set keepAliveIntervalInMilliseconds(int value);
 
   /// Indicates the state of the [HubConnection] to the server.
   HubConnectionState get state;
 
   /// Represents the connection id of the [HubConnection] on the server. The connection id will be null when the connection is either in the disconnected state or if the negotiation step was skipped.
-  String get connectionId;
+  String? get connectionId;
 
   /// Indicates the url of the [HubConnection] to the server.
-  String baseURL;
+  String get baseURL;
+  set baseURL(String value);
 
   /// Starts the connection.
   ///
@@ -58,7 +61,7 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns an object that yields results from the server as they are received.
-  StreamResult<T> stream<T>(String methodName, [List<Object> args]);
+  Stream<dynamic> stream(String methodName, [List<dynamic>? args]);
 
   /// Invokes a hub method on the server using the specified name and arguments. Does not wait for a response from the receiver.
   ///
@@ -70,7 +73,7 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns a [Future] that resolves when the invocation has been successfully sent, or rejects with an error.
-  Future<void> sendAsync(String methodName, [List<Object> args]);
+  Future<void> sendAsync(String methodName, [List<dynamic>? args]);
 
   /// Invokes a hub method on the server using the specified name and arguments.
   ///
@@ -85,14 +88,14 @@ abstract class HubConnection {
   /// [args] The arguments used to invoke the server method.
   ///
   /// Returns a [Future] that resolves with the result of the server method (if any), or rejects with an error.
-  Future<T> invokeAsync<T>(String methodName, [List<Object> args]);
+  Future<dynamic> invokeAsync(String methodName, [List<dynamic>? args]);
 
   /// Registers a handler that will be invoked when the hub method with the specified method name is invoked.
   ///
   /// [methodName] The name of the hub method to define.
   ///
   /// [newMethod] The handler that will be raised when the hub method is invoked.
-  void on(String methodName, void Function(List<Object> args) newMethod);
+  void on(String methodName, void Function(List<dynamic> args) newMethod);
 
   /// Removes the specified handler for the specified hub method.
   ///
@@ -101,26 +104,26 @@ abstract class HubConnection {
   ///
   /// [methodName] The name of the method to remove handlers for.
   /// [method] The handler to remove. This must be the same Function instance as the one passed to [HubConnection.on].
-  void off(String methodName, [void Function(List<Object> args) method]);
+  void off(String methodName, [void Function(List<dynamic> args)? method]);
 
   /// Registers a handler that will be invoked when the connection is closed.
   ///
   /// [callback] The handler that will be invoked when the connection is closed. Optionally receives a single argument containing the error that caused the connection to close (if any).
-  void onclose(void Function(Exception error) callback);
+  void onclose(void Function(Object? error) callback);
 
   /// Registers a handler that will be invoked when the connection starts reconnecting.
   ///
   /// [callback] The handler that will be invoked when the connection starts reconnecting. Optionally receives a single argument containing the error that caused the connection to start reconnecting (if any).
-  void onreconnecting(void Function(Exception error) callback);
+  void onreconnecting(void Function(Object? error) callback);
 
   /// Registers a handler that will be invoked when the connection successfully reconnects.
   ///
   /// [callback] The handler that will be invoked when the connection successfully reconnects.
-  void onreconnected(void Function(String connectionId) callback);
+  void onreconnected(void Function(String? connectionId) callback);
 
   factory HubConnection.create(
       Connection connection, Logger logger, HubProtocol protocol,
-      [RetryPolicy reconnectPolicy]) {
+      [RetryPolicy? reconnectPolicy]) {
     return _HubConnection(connection, logger, protocol, reconnectPolicy);
   }
 }
@@ -129,41 +132,37 @@ class _HubConnection implements HubConnection {
   final Object _cachedPingMessage;
   final Connection _connection;
   final Logger _logger;
-  final RetryPolicy _reconnectPolicy;
+  final RetryPolicy? _reconnectPolicy;
   final HubProtocol _protocol;
   final HandshakeProtocol _handshakeProtocol;
-  Map<String, void Function(HubMessage invocationEvent, Exception error)>
+  Map<String, void Function(HubMessage? invocationEvent, Object? error)>
       _callbacks;
-  final Map<String, List<void Function(List<Object> args)>> _methods;
+  final Map<String, List<void Function(List<dynamic> args)>> _methods;
   int _invocationId;
-  final List<void Function(Exception error)> _closedCallbacks;
-  final List<void Function(Exception error)> _reconnectingCallbacks;
-  final List<void Function(String connectionId)> _reconnectedCallbacks;
+  final List<void Function(Object? error)> _closedCallbacks;
+  final List<void Function(Object? error)> _reconnectingCallbacks;
+  final List<void Function(String? connectionId)> _reconnectedCallbacks;
   bool _receivedHandshakeResponse;
-  Completer<void> _handshakeCompleter;
-  Exception _stopDuringStartError;
+  Completer<void>? _handshakeCompleter;
+  Object? _stopDuringStartError;
   HubConnectionState _connectionState;
   // connectionStarted is tracked independently from connectionState, so we can check if the
   // connection ever did successfully transition from connecting to connected before disconnecting.
   bool _connectionStarted;
-  Future<void> _startFuture;
-  Future<void> _stopFuture;
-  Timer _reconnectDelayHandle;
-  Timer _timeoutHandle;
-  Timer _pingServerHandle;
+  Future<void>? _startFuture;
+  Future<void>? _stopFuture;
+  Timer? _reconnectDelayHandle;
+  Timer? _timeoutHandle;
+  Timer? _pingServerHandle;
 
   @override
-  String get baseURL => _connection.baseURL ?? '';
+  String get baseURL => _connection.baseURL;
   @override
   set baseURL(String url) {
     if (_connectionState != HubConnectionState.disconnected &&
         _connectionState != HubConnectionState.reconnecting) {
       throw Exception(
           'The HubConnection must be in the Disconnected or Reconnecting state to change the url.');
-    }
-
-    if (url == null) {
-      throw Exception('The HubConnection url must be a valid url.');
     }
 
     _connection.baseURL = url;
@@ -177,7 +176,7 @@ class _HubConnection implements HubConnection {
   @override
   HubConnectionState get state => _connectionState;
   @override
-  String get connectionId => _connection?.connectionId;
+  String? get connectionId => _connection.connectionId;
 
   _HubConnection(this._connection, this._logger, this._protocol,
       [this._reconnectPolicy])
@@ -194,10 +193,6 @@ class _HubConnection implements HubConnection {
         _connectionState = HubConnectionState.disconnected,
         _connectionStarted = false,
         _cachedPingMessage = _protocol.writeMessage(PingMessage()) {
-    Arg.isRequired(_connection, 'connection');
-    Arg.isRequired(_logger, 'logger');
-    Arg.isRequired(_protocol, 'protocol');
-
     _connection.onreceive = (data) => _processIncomingData(data);
     _connection.onclose = (error) => _connectionClosed(error);
   }
@@ -205,7 +200,7 @@ class _HubConnection implements HubConnection {
   @override
   Future<void> startAsync() {
     _startFuture = _startWithStateTransitionsAsync();
-    return _startFuture;
+    return _startFuture!;
   }
 
   @override
@@ -223,14 +218,14 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  StreamResult<T> stream<T>(String methodName, [List<Object> args]) {
+  Stream<dynamic> stream(String methodName, [List<dynamic>? args]) {
     args ??= [];
     final streams = _replaceStreamingParams(args);
     final invocationDescriptor =
-        _createStreamInovation(methodName, args, streams.value);
+        _createStreamInovation(methodName, args, streams.item2);
 
-    Future<void> futureQueue;
-    final subject = Subject<T>();
+    late Future<void> futureQueue;
+    final subject = Subject();
     subject.cancelCallback = () {
       final cancelInvocation =
           _createCancelInocation(invocationDescriptor.invocationId);
@@ -252,7 +247,7 @@ class _HubConnection implements HubConnection {
           subject.complete();
         }
       } else if (invocationEvent is StreamItemMessage) {
-        final item = invocationEvent.item as T;
+        final item = invocationEvent.item;
         subject.next(item);
       }
     };
@@ -262,33 +257,33 @@ class _HubConnection implements HubConnection {
       _callbacks.remove(invocationDescriptor.invocationId);
     });
 
-    _launchStreams(streams.key, futureQueue);
+    _launchStreams(streams.item1, futureQueue);
 
     return subject;
   }
 
   @override
-  Future<void> sendAsync(String methodName, [List<Object> args]) {
-    final streams = _replaceStreamingParams(args);
-    final message = _createInvocation(methodName, args, true, streams.value);
+  Future<void> sendAsync(String methodName, [List<dynamic>? args]) {
+    final streams = _replaceStreamingParams(args!);
+    final message = _createInvocation(methodName, args, true, streams.item2);
     final sendFuture = _sendWithProtocolAsync(message);
 
-    _launchStreams(streams.key, sendFuture);
+    _launchStreams(streams.item1, sendFuture);
 
     return sendFuture;
   }
 
   @override
-  Future<T> invokeAsync<T>(String methodName, [List<Object> args]) {
+  Future<dynamic> invokeAsync(String methodName, [List<dynamic>? args]) {
     args ??= [];
     final streams = _replaceStreamingParams(args);
     final invocationDescriptor =
-        _createInvocation(methodName, args, false, streams.value);
+        _createInvocation(methodName, args, false, streams.item2);
 
-    final completer = Completer<Object>();
+    final completer = Completer();
 
     // invocationId will always have a value for a non-blocking invocation
-    _callbacks[invocationDescriptor.invocationId] = (invocationEvent, error) {
+    _callbacks[invocationDescriptor.invocationId!] = (invocationEvent, error) {
       if (error != null) {
         completer.completeError(error);
         return;
@@ -302,7 +297,7 @@ class _HubConnection implements HubConnection {
         }
       } else {
         final error =
-            Exception('Unexpected message type: ${invocationEvent.type}');
+            Exception('Unexpected message type: ${invocationEvent!.type}');
         completer.completeError(error);
       }
     };
@@ -314,36 +309,28 @@ class _HubConnection implements HubConnection {
       _callbacks.remove(invocationDescriptor.invocationId);
     });
 
-    _launchStreams(streams.key, futureQueue);
+    _launchStreams(streams.item1, futureQueue);
 
     return completer.future;
   }
 
   @override
-  void on(String methodName, void Function(List<Object> args) newMethod) {
-    if (methodName == null || newMethod == null) {
-      return;
-    }
-
+  void on(String methodName, void Function(List<dynamic> args) newMethod) {
     methodName = methodName.toLowerCase();
     if (_methods[methodName] == null) {
       _methods[methodName] = [];
     }
 
     // Preventing adding the same handler multiple times.
-    if (_methods[methodName].contains(newMethod)) {
+    if (_methods[methodName]!.contains(newMethod)) {
       return;
     }
 
-    _methods[methodName].add(newMethod);
+    _methods[methodName]!.add(newMethod);
   }
 
   @override
-  void off(String methodName, [void Function(List<Object> args) method]) {
-    if (methodName == null) {
-      return;
-    }
-
+  void off(String methodName, [void Function(List<dynamic> args)? method]) {
     methodName = methodName.toLowerCase();
     final handlers = _methods[methodName];
     if (handlers == null) {
@@ -363,27 +350,21 @@ class _HubConnection implements HubConnection {
   }
 
   @override
-  void onclose(void Function(Exception error) callback) {
-    if (callback != null) {
-      _closedCallbacks.add(callback);
-    }
+  void onclose(void Function(Object? error) callback) {
+    _closedCallbacks.add(callback);
   }
 
   @override
-  void onreconnecting(void Function(Exception error) callback) {
-    if (callback != null) {
-      _reconnectingCallbacks.add(callback);
-    }
+  void onreconnecting(void Function(Object? error) callback) {
+    _reconnectingCallbacks.add(callback);
   }
 
   @override
-  void onreconnected(void Function(String connectionId) callback) {
-    if (callback != null) {
-      _reconnectedCallbacks.add(callback);
-    }
+  void onreconnected(void Function(String? connectionId) callback) {
+    _reconnectedCallbacks.add(callback);
   }
 
-  void _processIncomingData(Object data) {
+  void _processIncomingData(dynamic data) {
     _cleanupTimeout();
 
     if (!_receivedHandshakeResponse) {
@@ -400,13 +381,15 @@ class _HubConnection implements HubConnection {
         if (message is InvocationMessage) {
           _invokeClientMethod(message);
         } else if (message is CompletionMessage) {
-          final callback = _callbacks[message.invocationId];
+          final void Function(HubMessage, Exception?)? callback =
+              _callbacks[message.invocationId];
           if (callback != null) {
             _callbacks.remove(message.invocationId);
             callback(message, null);
           }
         } else if (message is StreamItemMessage) {
-          final callback = _callbacks[message.invocationId];
+          final void Function(HubMessage, Exception?)? callback =
+              _callbacks[message.invocationId];
           if (callback != null) {
             callback(message, null);
           }
@@ -438,20 +421,20 @@ class _HubConnection implements HubConnection {
     _resetTimeoutPeriod();
   }
 
-  Object _processHandshakeResponse(Object data) {
+  dynamic _processHandshakeResponse(dynamic data) {
     HandshakeResponseMessage responseMessage;
-    Object remainingData;
+    dynamic remainingData;
 
     try {
       final tuple = _handshakeProtocol.parseHandshakeResponse(data);
-      remainingData = tuple.key;
-      responseMessage = tuple.value;
+      remainingData = tuple.item1;
+      responseMessage = tuple.item2;
     } catch (e) {
       final message = 'Error parsing handshake response: $e';
       _logger.log(LogLevel.error, message);
 
       final error = Exception(message);
-      _handshakeCompleter.completeError(error);
+      _handshakeCompleter!.completeError(error);
       throw error;
     }
     if (responseMessage.error != null) {
@@ -460,17 +443,17 @@ class _HubConnection implements HubConnection {
       _logger.log(LogLevel.error, message);
 
       final error = Exception(message);
-      _handshakeCompleter.completeError(error);
+      _handshakeCompleter!.completeError(error);
       throw error;
     } else {
       _logger.log(LogLevel.debug, 'Server handshake complete.');
-      _handshakeCompleter.complete();
+      _handshakeCompleter!.complete();
     }
 
     return remainingData;
   }
 
-  void _connectionClosed([Exception error]) {
+  void _connectionClosed([Object? error]) {
     _logger.log(LogLevel.debug,
         'HubConnection.connectionClosed($error) called while in state $_connectionState.');
 
@@ -482,8 +465,8 @@ class _HubConnection implements HubConnection {
 
     // If the handshake is in progress, start will be waiting for the handshake promise, so we complete it.
     // If it has already completed, this should just noop.
-    if (_handshakeCompleter != null && !_handshakeCompleter.isCompleted) {
-      _handshakeCompleter.complete();
+    if (_handshakeCompleter != null && !_handshakeCompleter!.isCompleted) {
+      _handshakeCompleter!.complete();
     }
 
     _cancelCallbacksWithError(error ??
@@ -537,8 +520,8 @@ class _HubConnection implements HubConnection {
     _receivedHandshakeResponse = false;
 
     _handshakeCompleter = Completer();
-    final future = _handshakeCompleter.future;
-    // HACK: Dart will throw error if we don't catch the error immediately...
+    final future = _handshakeCompleter!.future;
+    // HACK: Will throw unhandled excpetion if we don't catch the error early...
     // See https://github.com/dart-lang/sdk/issues/44561
     unawaited(future.catchError((_) {}));
 
@@ -564,7 +547,7 @@ class _HubConnection implements HubConnection {
       await future;
 
       if (_stopDuringStartError != null) {
-        throw _stopDuringStartError;
+        throw _stopDuringStartError!;
       }
     } catch (e) {
       _logger.log(LogLevel.debug,
@@ -579,8 +562,7 @@ class _HubConnection implements HubConnection {
   }
 
   void _resetTimeoutPeriod() {
-    if (_connection.features == null ||
-        _connection.features['inherentKeepAlive'] != true) {
+    if (_connection.features['inherentKeepAlive'] != true) {
       // Set the timeout timer
       final duration = Duration(milliseconds: serverTimeoutInMilliseconds);
       _timeoutHandle = Timer(duration, () => _serverTimeout());
@@ -618,19 +600,19 @@ class _HubConnection implements HubConnection {
 
   void _cleanupPingTimer() {
     if (_pingServerHandle != null) {
-      _pingServerHandle.cancel();
+      _pingServerHandle!.cancel();
       _pingServerHandle = null;
     }
   }
 
   void _cleanupTimeout() {
     if (_timeoutHandle != null) {
-      _timeoutHandle.cancel();
+      _timeoutHandle!.cancel();
       _timeoutHandle = null;
     }
   }
 
-  Future<void> _stopInternalAsync([Exception error]) {
+  Future<void> _stopInternalAsync([Object? error]) {
     if (_connectionState == HubConnectionState.disconnected) {
       _logger.log(LogLevel.debug,
           'Call to HubConnection.stop($error) ignored because it is already in the disconnected state.');
@@ -640,7 +622,7 @@ class _HubConnection implements HubConnection {
     if (_connectionState == HubConnectionState.disconnecting) {
       _logger.log(LogLevel.debug,
           'Call to HttpConnection.stopAsync($error) ignored because the connection is already in the disconnecting state.');
-      return _stopFuture;
+      return _stopFuture!;
     }
 
     _connectionState = HubConnectionState.disconnecting;
@@ -654,7 +636,7 @@ class _HubConnection implements HubConnection {
       _logger.log(LogLevel.debug,
           'Connection stopped during reconnect delay. Done reconnecting.');
 
-      _clearTimeout(_reconnectDelayHandle);
+      _reconnectDelayHandle!.cancel();
       _reconnectDelayHandle = null;
 
       _completeClose();
@@ -673,9 +655,7 @@ class _HubConnection implements HubConnection {
     return _connection.stopAsync(error);
   }
 
-  void _clearTimeout(reconnectDelayHandle) {}
-
-  void _completeClose([Exception error]) {
+  void _completeClose([Object? error]) {
     if (_connectionStarted == true) {
       _connectionState = HubConnectionState.disconnected;
       _connectionStarted = false;
@@ -690,13 +670,10 @@ class _HubConnection implements HubConnection {
   }
 
   void _launchStreams(
-      Map<int, StreamResult<Object>> streams, Future<void> futureQueue) {
+      Map<int, Stream<dynamic>> streams, Future<void> futureQueue) {
     if (streams.isEmpty) {
       return;
     }
-
-    // Synchronize stream data so they arrive in-order on the server
-    futureQueue ??= Future.value();
 
     // We want to iterate over the keys, since the keys are the stream ids
     for (var entry in streams.entries) {
@@ -724,14 +701,14 @@ class _HubConnection implements HubConnection {
     }
   }
 
-  MapEntry<Map<int, StreamResult<Object>>, List<String>>
-      _replaceStreamingParams(List<Object> args) {
-    final streams = <int, StreamResult<Object>>{};
+  Tuple2<Map<int, Stream<dynamic>>, List<String>> _replaceStreamingParams(
+      List<dynamic> args) {
+    final streams = <int, Stream<dynamic>>{};
     final streamIds = <String>[];
 
     for (var i = args.length - 1; i >= 0; i--) {
       final argument = args[i];
-      if (argument is StreamResult<Object>) {
+      if (argument is Stream<dynamic>) {
         final streamId = _invocationId;
         _invocationId++;
         // Store the stream for later use
@@ -743,10 +720,10 @@ class _HubConnection implements HubConnection {
       }
     }
 
-    return MapEntry(streams, streamIds);
+    return Tuple2(streams, streamIds);
   }
 
-  InvocationMessage _createInvocation(String methodName, List<Object> args,
+  InvocationMessage _createInvocation(String methodName, List<dynamic> args,
       bool nonblocking, List<String> streamIds) {
     if (nonblocking) {
       if (streamIds.isNotEmpty) {
@@ -768,7 +745,7 @@ class _HubConnection implements HubConnection {
   }
 
   StreamInvocationMessage _createStreamInovation(
-      String methodName, List<Object> args, List<String> streamIds) {
+      String methodName, List<dynamic> args, List<String> streamIds) {
     final invocationId = _invocationId.toString();
     _invocationId++;
 
@@ -784,12 +761,12 @@ class _HubConnection implements HubConnection {
     return CancelInvocationMessage(id);
   }
 
-  StreamItemMessage _createStreamItemMessage(String id, Object item) {
+  StreamItemMessage _createStreamItemMessage(String id, dynamic item) {
     return StreamItemMessage(id, item: item);
   }
 
   CompletionMessage _createCompletionMessage(String id,
-      {Exception error, Object result}) {
+      {dynamic error, dynamic result}) {
     if (error != null) {
       return CompletionMessage(id, error: '$error');
     }
@@ -797,7 +774,7 @@ class _HubConnection implements HubConnection {
     return CompletionMessage(id, result: result);
   }
 
-  Future<void> _sendWithProtocolAsync(Object message) {
+  Future<void> _sendWithProtocolAsync(HubMessage message) {
     final data = _protocol.writeMessage(message);
     return _sendMessageAsync(data);
   }
@@ -833,7 +810,7 @@ class _HubConnection implements HubConnection {
     }
   }
 
-  void _cancelCallbacksWithError(Exception error) {
+  void _cancelCallbacksWithError(Object error) {
     final callbacks = _callbacks.values;
     _callbacks = {};
 
@@ -842,7 +819,7 @@ class _HubConnection implements HubConnection {
     }
   }
 
-  Future<void> _reconnectAsync([Exception error]) async {
+  Future<void> _reconnectAsync([Object? error]) async {
     final reconnectStartTime = DateTime.now();
     var previousReconnectAttempts = 0;
     var retryError =
@@ -867,20 +844,18 @@ class _HubConnection implements HubConnection {
       _logger.log(LogLevel.information, 'Connection reconnecting.');
     }
 
-    if (_reconnectingCallbacks != null) {
-      try {
-        _reconnectingCallbacks.forEach((c) => c.call(error));
-      } catch (e) {
-        _logger.log(LogLevel.error,
-            "An onreconnecting callback called with error '$error' threw error '$e'.");
-      }
+    try {
+      _reconnectingCallbacks.forEach((c) => c.call(error));
+    } catch (e) {
+      _logger.log(LogLevel.error,
+          "An onreconnecting callback called with error '$error' threw error '$e'.");
+    }
 
-      // Exit early if an onreconnecting callback called connection.stop().
-      if (_connectionState != HubConnectionState.reconnecting) {
-        _logger.log(LogLevel.debug,
-            'Connection left the reconnecting state in onreconnecting callback. Done reconnecting.');
-        return;
-      }
+    // Exit early if an onreconnecting callback called connection.stop().
+    if (_connectionState != HubConnectionState.reconnecting) {
+      _logger.log(LogLevel.debug,
+          'Connection left the reconnecting state in onreconnecting callback. Done reconnecting.');
+      return;
     }
 
     while (nextRetryDelay != null) {
@@ -906,14 +881,12 @@ class _HubConnection implements HubConnection {
         _logger.log(
             LogLevel.information, 'HubConnection reconnected successfully.');
 
-        if (_reconnectedCallbacks != null) {
-          try {
-            _reconnectedCallbacks
-                .forEach((c) => c.call(_connection.connectionId));
-          } catch (e) {
-            _logger.log(LogLevel.error,
-                "An onreconnected callback called with connectionId '${_connection.connectionId}; threw error '$e'.");
-          }
+        try {
+          _reconnectedCallbacks
+              .forEach((c) => c.call(_connection.connectionId));
+        } catch (e) {
+          _logger.log(LogLevel.error,
+              "An onreconnected callback called with connectionId '${_connection.connectionId}; threw error '$e'.");
         }
 
         return;
@@ -941,12 +914,12 @@ class _HubConnection implements HubConnection {
     _completeClose();
   }
 
-  int _getNextRetryDelay(
-      int previousRetryCount, int elapsedMilliseconds, Exception retryReason) {
+  int? _getNextRetryDelay(
+      int previousRetryCount, int elapsedMilliseconds, Object retryReason) {
     try {
       final retryContext =
           RetryContext(previousRetryCount, elapsedMilliseconds, retryReason);
-      return _reconnectPolicy.nextRetryDelayInMilliseconds(retryContext);
+      return _reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext);
     } catch (e) {
       _logger.log(LogLevel.error,
           "IRetryPolicy.nextRetryDelayInMilliseconds($previousRetryCount, $elapsedMilliseconds) threw error '$e'.");
@@ -956,34 +929,28 @@ class _HubConnection implements HubConnection {
 }
 
 /// Describes the current state of the [HubConnection] to the server.
-abstract class HubConnectionState {
-  String get name;
+class HubConnectionState {
+  final String name;
 
   /// The hub connection is disconnected.
   static const HubConnectionState disconnected =
-      _HubConnectionState('Disconnected');
+      HubConnectionState('Disconnected');
 
   /// The hub connection is connecting.
-  static const HubConnectionState connecting =
-      _HubConnectionState('Connecting');
+  static const HubConnectionState connecting = HubConnectionState('Connecting');
 
   /// The hub connection is connected.
-  static const HubConnectionState connected = _HubConnectionState('Connected');
+  static const HubConnectionState connected = HubConnectionState('Connected');
 
   /// The hub connection is disconnecting.
   static const HubConnectionState disconnecting =
-      _HubConnectionState('Disconnecting');
+      HubConnectionState('Disconnecting');
 
   /// The hub connection is reconnecting.
   static const HubConnectionState reconnecting =
-      _HubConnectionState('Reconnecting');
-}
+      HubConnectionState('Reconnecting');
 
-class _HubConnectionState implements HubConnectionState {
-  @override
-  final String name;
-
-  const _HubConnectionState(this.name);
+  const HubConnectionState(this.name);
 
   @override
   String toString() {

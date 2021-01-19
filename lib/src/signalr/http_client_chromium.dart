@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:html' as chromium;
 
-import 'exceptions.dart';
+import 'errors.dart';
 import 'http_client.dart';
 import 'logger.dart';
 
@@ -14,7 +14,7 @@ class _HttpClient extends HttpClient {
 
   @override
   Future<HttpResponse> sendAsync(HttpRequest request) {
-    if (request.abortSignal != null && request.abortSignal.aborted) {
+    if (request.abortSignal != null && request.abortSignal!.aborted) {
       final error = AbortException();
       return Future.error(error);
     }
@@ -31,7 +31,7 @@ class _HttpClient extends HttpClient {
 
     final xhr = chromium.HttpRequest();
 
-    xhr.open(request.method, request.url, async: true);
+    xhr.open(request.method!, request.url!, async: true);
     xhr.withCredentials = request.withCredentials ?? true;
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     // Explicitly setting the Content-Type header for React Native on Android platform.
@@ -45,11 +45,11 @@ class _HttpClient extends HttpClient {
     }
 
     if (request.responseType != null) {
-      xhr.responseType = request.responseType;
+      xhr.responseType = request.responseType!;
     }
 
     if (request.abortSignal != null) {
-      request.abortSignal.onabort = () {
+      request.abortSignal!.onabort = () {
         xhr.abort();
         final error = AbortException();
         completer.completeError(error);
@@ -62,15 +62,15 @@ class _HttpClient extends HttpClient {
 
     xhr.onLoad.first.then((_) {
       if (request.abortSignal != null) {
-        request.abortSignal.onabort = null;
+        request.abortSignal!.onabort = null;
       }
 
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status! >= 200 && xhr.status! < 300) {
         final response = HttpResponse(
-            xhr.status, xhr.statusText, xhr.response ?? xhr.responseText);
+            xhr.status!, xhr.statusText, xhr.response ?? xhr.responseText);
         completer.complete(response);
       } else {
-        final error = HttpException(xhr.statusText, xhr.status);
+        final error = HttpException(xhr.statusText!, xhr.status!);
         completer.completeError(error);
       }
     });
@@ -78,7 +78,7 @@ class _HttpClient extends HttpClient {
     xhr.onError.first.then((_) {
       _logger.log(LogLevel.warning,
           'Error from HTTP request. ${xhr.status}: ${xhr.statusText}.');
-      final error = HttpException(xhr.statusText, xhr.status);
+      final error = HttpException(xhr.statusText!, xhr.status!);
       completer.completeError(error);
     });
 

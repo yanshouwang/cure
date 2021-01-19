@@ -4,50 +4,42 @@ import 'package:cure/ws.dart';
 
 import 'http_client.dart';
 import 'logger.dart';
+import 'polyfills.dart';
 import 'transport.dart';
 import 'utils.dart';
 
 class WebSocketTransport implements Transport {
   final Logger _logger;
-  final Future<String> Function() _accessTokenFactory;
+  final String Function()? _accessTokenBuilder;
   final bool _logMessageContent;
-  final WebSocket Function(String url,
-      {List<String> protocols,
-      Map<String, String> headers}) _webSocketConstructor;
+  final WebSocketConstructor _webSocketConstructor;
   final HttpClient _httpClient;
   final Map<String, String> _headers;
 
-  WebSocket _webSocket;
+  WebSocket? _webSocket;
 
   @override
-  void Function(Exception error) onclose;
+  void Function(Object data)? onreceive;
   @override
-  void Function(Object error) onreceive;
+  void Function(Object? error)? onclose;
 
-  WebSocketTransport(this._httpClient, this._accessTokenFactory, this._logger,
-      this._logMessageContent, this._webSocketConstructor, this._headers)
-      : onreceive = null,
-        onclose = null;
+  WebSocketTransport(this._httpClient, this._accessTokenBuilder, this._logger,
+      this._logMessageContent, this._webSocketConstructor, this._headers);
 
   @override
   Future<void> connectAsync(String url, TransferFormat transferFormat) async {
-    Arg.isRequired(url, 'url');
-    Arg.isRequired(transferFormat, 'transferFormat');
-
     _logger.log(LogLevel.trace, '(WebSockets transport) Connecting.');
 
-    if (_accessTokenFactory != null) {
-      final token = await _accessTokenFactory();
-      if (token != null) {
-        url += (url.contains('?') ? '&' : '?') +
-            'access_token=${Uri.encodeComponent(token)}';
-      }
+    final token = _accessTokenBuilder?.call();
+    if (token != null) {
+      url += (url.contains('?') ? '&' : '?') +
+          'access_token=${Uri.encodeComponent(token)}';
     }
 
     final completer = Completer<void>();
     final from = RegExp(r'^http');
     url = url.replaceFirst(from, 'ws');
-    WebSocket ws;
+    WebSocket? ws;
     var opened = false;
     if (Platform.isDartium) {
       final headers = <String, String>{};
@@ -55,25 +47,23 @@ class WebSocketTransport implements Transport {
       headers[userAgent.key] = userAgent.value;
 
       final cookies = _httpClient.getCookieString(url);
-      if (cookies != null && cookies.isNotEmpty) {
+      if (cookies.isNotEmpty) {
         headers['Cookie'] = cookies;
       }
 
-      if (_headers != null) {
-        for (var header in _headers.entries) {
-          headers[header.key] = header.value;
-        }
+      for (var header in _headers.entries) {
+        headers[header.key] = header.value;
       }
 
       // Only pass headers when in non-browser environments
-      ws = _webSocketConstructor(url, headers: headers);
+      ws = _webSocketConstructor(url, null, headers);
     }
     // Chrome is not happy with passing 'undefined' as protocol
-    ws ??= _webSocketConstructor(url);
+    ws ??= _webSocketConstructor(url, null, null);
     if (transferFormat == TransferFormat.binary) {
       ws.binaryType = 'arraybuffer';
     }
-    final fail = (Exception error) {
+    final fail = (Object error) {
       if (completer.isCompleted) {
         return;
       }
@@ -85,12 +75,12 @@ class WebSocketTransport implements Transport {
       opened = true;
       completer.complete();
     };
-    ws.onerror = (error) => fail(error);
+    ws.onerror = (error) => fail(error!);
     ws.ondata = (data) {
       _logger.log(LogLevel.trace,
           '(WebSockets transport) data received. ${getDataDetail(data, _logMessageContent)}.');
       try {
-        onreceive?.call(data);
+        onreceive?.call(data!);
       } catch (error) {
         close(error);
       }
@@ -117,11 +107,11 @@ class WebSocketTransport implements Transport {
   }
 
   @override
-  Future<void> sendAsync(data) {
-    if (_webSocket != null && _webSocket.readyState == WebSocket.OPEN) {
+  Future<void> sendAsync(Object data) {
+    if (_webSocket != null && _webSocket!.readyState == WebSocket.OPEN) {
       _logger.log(LogLevel.trace,
           '(WebSockets transport) sending data. ${getDataDetail(data, _logMessageContent)}.');
-      _webSocket.send(data);
+      _webSocket!.send(data);
       return Future.value();
     }
 
@@ -140,24 +130,18 @@ class WebSocketTransport implements Transport {
     return Future.value();
   }
 
-  void close([Object error]) {
+  void close([Object? error]) {
     // webSocket will be null if the transport did not start successfully
     if (_webSocket != null) {
       // Clear websocket handlers because we are considering the socket closed now
-      _webSocket.onclose = (code, reason) => {};
-      _webSocket.ondata = (data) => {};
-      _webSocket.onerror = (error) => {};
-      _webSocket.close();
+      _webSocket!.onclose = (code, reason) => {};
+      _webSocket!.ondata = (data) => {};
+      _webSocket!.onerror = (error) => {};
+      _webSocket!.close();
       _webSocket = null;
     }
 
     _logger.log(LogLevel.trace, '(WebSockets transport) socket closed.');
-    if (onclose != null) {
-      if (error is Exception) {
-        onclose(error);
-      } else {
-        onclose(null);
-      }
-    }
+    onclose?.call(error);
   }
 }

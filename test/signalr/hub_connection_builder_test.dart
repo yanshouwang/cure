@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:cure/core.dart';
 import 'package:cure/signalr.dart';
+import 'package:cure/src/signalr/http_connection.dart';
+import 'package:cure/src/signalr/utils.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
 
 import 'common.dart';
+import 'hub_connection_builder_test.mocks.dart';
 import 'test_http_client.dart';
 
 final longPollingNegotiateResponse = NegotiateResponse(
@@ -37,7 +41,7 @@ final ExpectedLogLevelMappings = {
 };
 
 class CapturingConsole implements Console {
-  List<Object> messages = [];
+  List<Object?> messages = [];
 
   @override
   void error(Object message) {
@@ -59,7 +63,7 @@ class CapturingConsole implements Console {
     messages.add(CapturingConsole._stripPrefix(message));
   }
 
-  static Object _stripPrefix(dynamic input) {
+  static Object? _stripPrefix(dynamic input) {
     if (input is String) {
       final from = RegExp(r'\[.*\]\s+');
       input = input.replaceAll(from, '');
@@ -68,23 +72,17 @@ class CapturingConsole implements Console {
   }
 }
 
+@GenerateMocks([Logger])
 void main() {
-  [null, ''].forEach((url) {
+  [''].forEach((url) {
     test('# withUrl throws if url is $url', () {
       final builder = HubConnectionBuilder();
       final other = RegExp(
           r"Exception: The 'url' argument (is required|should not be empty).");
       final m = predicate((e) => '$e'.contains(other));
       final matcher = throwsA(m);
-      expect(() => builder.withURL(url), matcher);
+      expect(() => builder.url = url, matcher);
     });
-  });
-  test('# withHubProtocol throws if protocol is null', () {
-    final builder = HubConnectionBuilder();
-    final m = predicate(
-        (e) => '$e' == "Exception: The 'protocol' argument is required.");
-    final matcher = throwsA(m);
-    expect(() => builder.withHubProtocol(null), matcher);
   });
   test('# builds HubConnection with HttpConnection using provided URL',
       () async {
@@ -97,13 +95,13 @@ void main() {
         pollCompleted.complete(HttpResponse(204, 'No Content', '{}'));
         return HttpResponse(202);
       }, 'POST', 'http://example.com?id=123abc');
-      final connection = createConnectionBuilder()
-          .withURL(
-              'http://example.com',
-              commonHttpOptions
-                ..httpClient = testClient
-                ..logger = logger)
-          .build();
+      final options = commonHttpOptions
+        ..httpClient = testClient
+        ..logger = logger;
+      final builder = createConnectionBuilder()
+        ..url = 'http://example.com'
+        ..httpConnectionOptions = options;
+      final connection = builder.build();
 
       final m = predicate((e) =>
           '$e' ==
@@ -120,10 +118,11 @@ void main() {
     final protocol = TestProtocol();
 
     final builder = createConnectionBuilder()
-        .withURL('http://example.com', HttpTransportType.webSockets)
-        .withHubProtocol(protocol);
-    expect(
-        builder.httpConnectionOptions.transport, HttpTransportType.webSockets);
+      ..url = 'http://example.com'
+      ..transportType = HttpTransportType.webSockets
+      ..protocol = protocol;
+    expect(builder.$httpConnectionOptions!.transport,
+        HttpTransportType.webSockets);
   });
   test('# can configure hub protocol', () async {
     await VerifyLogger.runAsync((logger) async {
@@ -131,7 +130,7 @@ void main() {
 
       final pollSent = Completer<HttpRequest>();
       final pollCompleted = Completer<HttpResponse>();
-      HttpRequest negotiateRequest;
+      late HttpRequest negotiateRequest;
       final testClient = createTestClient(pollSent, pollCompleted.future).on(
         (r, next) {
           // Respond from the poll with the handshake response
@@ -143,14 +142,14 @@ void main() {
         'http://example.com?id=123abc',
       );
 
-      final connection = createConnectionBuilder()
-          .withURL(
-              'http://example.com',
-              commonHttpOptions
-                ..httpClient = testClient
-                ..logger = logger)
-          .withHubProtocol(protocol)
-          .build();
+      final options = commonHttpOptions
+        ..httpClient = testClient
+        ..logger = logger;
+      final builder = createConnectionBuilder()
+        ..url = 'http://example.com'
+        ..httpConnectionOptions = options
+        ..protocol = protocol;
+      final connection = builder.build();
 
       final m = predicate((e) =>
           '$e' ==
@@ -186,14 +185,6 @@ void main() {
       }
     }
 
-    test('# throws if logger is null', () {
-      final builder = HubConnectionBuilder();
-      final m = predicate(
-          (e) => '$e' == "Exception: The 'logging' argument is required.");
-      final matcher = throwsA(m);
-      expect(() => builder.configureLogging(null), matcher);
-    });
-
     [
       LogLevel.none,
       LogLevel.critical,
@@ -204,12 +195,12 @@ void main() {
       LogLevel.trace,
     ].forEach((minLevel) {
       test('# accepts LogLevel.${minLevel}', () async {
-        final builder = HubConnectionBuilder().configureLogging(minLevel);
+        final builder = HubConnectionBuilder()..logLevel = minLevel;
 
         final matcher = isA<ConsoleLogger>();
-        expect(builder.logger, matcher);
+        expect(builder.$logger, matcher);
 
-        testLogLevels(builder.logger, minLevel);
+        testLogLevels(builder.$logger!, minLevel);
       });
     });
 
@@ -225,10 +216,10 @@ void main() {
         pollCompleted.complete(HttpResponse(204, 'No Content', '{}'));
         return HttpResponse(202);
       }, 'POST', 'http://example.com?id=123abc');
-      final connection = createConnectionBuilder(logger)
-          .withURL(
-              'http://example.com', commonHttpOptions..httpClient = testClient)
-          .build();
+      final builder = createConnectionBuilder(logger)
+        ..url = 'http://example.com'
+        ..httpConnectionOptions = (commonHttpOptions..httpClient = testClient);
+      final connection = builder.build();
 
       try {
         await connection.startAsync();
@@ -250,10 +241,11 @@ void main() {
         return HttpResponse(202);
       }, 'POST', 'http://example.com?id=123abc');
       final logger = CaptureLogger();
-      final connection = createConnectionBuilder(logger)
-          .withURL(
-              'http://example.com', commonHttpOptions..httpClient = testClient)
-          .build();
+      final builder = createConnectionBuilder(logger)
+        ..url = 'http://example.com'
+        ..httpConnectionOptions = (commonHttpOptions..httpClient = testClient);
+
+      final connection = builder.build();
 
       try {
         await connection.startAsync();
@@ -281,14 +273,13 @@ void main() {
       }, 'POST', 'http://example.com?id=123abc');
       final hubConnectionLogger = CaptureLogger();
       final httpConnectionLogger = CaptureLogger();
-      final connection = createConnectionBuilder(hubConnectionLogger)
-          .withURL(
-              'http://example.com',
-              HttpConnectionOptions(
-                httpClient: testClient,
-                logger: httpConnectionLogger,
-              ))
-          .build();
+      final builder = createConnectionBuilder(hubConnectionLogger)
+        ..url = 'http://example.com'
+        ..httpConnectionOptions = HttpConnectionOptions(
+          httpClient: testClient,
+          logger: httpConnectionLogger,
+        );
+      final connection = builder.build();
 
       try {
         await connection.startAsync();
@@ -309,73 +300,72 @@ void main() {
       expect(hubConnectionLogger.messages, matcher);
     });
   });
-  test('# reconnectPolicy undefined by default', () {
-    final builder = HubConnectionBuilder().withURL('http://example.com');
-    expect(builder.reconnectPolicy, isNull);
+  test('# reconnectPolicy is null by default', () {
+    final builder = HubConnectionBuilder()..url = 'http://example.com';
+    expect(builder.$reconnectPolicy, null);
   });
-  test('# withAutomaticReconnect throws if reconnectPolicy is already set', () {
-    final builder = HubConnectionBuilder().withAutomaticReconnect();
-    final m = predicate(
-        (e) => '$e' == 'Exception: A reconnectPolicy has already been set.');
-    final matcher = throwsA(m);
-    expect(() => builder.withAutomaticReconnect(), matcher);
-  });
-  test(
-      '# withAutomaticReconnect uses default retryDelays when called with no arguments',
-      () {
+  test('# uses default retryDelays when set reconnect to true', () {
     // From DefaultReconnectPolicy.ts
     final DEFAULT_RETRY_DELAYS_IN_MILLISECONDS = [0, 2000, 10000, 30000, null];
-    final builder = HubConnectionBuilder().withAutomaticReconnect();
+    final builder = HubConnectionBuilder()..reconnect = true;
 
     var retryCount = 0;
     for (final delay in DEFAULT_RETRY_DELAYS_IN_MILLISECONDS) {
       final retryContext = RetryContext(retryCount++, 0, Exception());
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.$reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
   });
-  test('# withAutomaticReconnect uses custom retryDelays when provided', () {
+  test('# uses custom retryDelays when set reconnectDelays', () {
     final customRetryDelays = [3, 1, 4, 1, 5, 9];
-    final builder =
-        HubConnectionBuilder().withAutomaticReconnect(customRetryDelays);
+    final builder = HubConnectionBuilder()..reconnectDelays = customRetryDelays;
 
     var retryCount = 0;
     for (final delay in customRetryDelays) {
       final retryContext = RetryContext(retryCount++, 0, Exception());
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.$reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
 
     final retryContextFinal = RetryContext(retryCount++, 0, Exception());
 
     expect(
-        builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContextFinal),
+        builder.$reconnectPolicy!
+            .nextRetryDelayInMilliseconds(retryContextFinal),
         null);
   });
-  test('# withAutomaticReconnect uses a custom IRetryPolicy when provided', () {
+  test('# uses a custom RetryPolicy when set reconnectPolicy', () {
     final customRetryDelays = [127, 0, 0, 1];
     final builder = HubConnectionBuilder()
-        .withAutomaticReconnect(DefaultReconnectPolicy(customRetryDelays));
+      ..reconnectPolicy = RetryPolicy(customRetryDelays);
 
     var retryCount = 0;
     for (final delay in customRetryDelays) {
       final retryContext = RetryContext(retryCount++, 0, Exception());
 
-      expect(builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContext),
+      expect(
+          builder.$reconnectPolicy!.nextRetryDelayInMilliseconds(retryContext),
           delay);
     }
 
     final retryContextFinal = RetryContext(retryCount++, 0, Exception());
 
     expect(
-        builder.reconnectPolicy.nextRetryDelayInMilliseconds(retryContextFinal),
+        builder.$reconnectPolicy!
+            .nextRetryDelayInMilliseconds(retryContextFinal),
         null);
   });
+  test('# reconnectPolicy is null when set reconnect to false', () {
+    final builder = HubConnectionBuilder()
+      ..reconnect = true
+      ..reconnect = false;
+    expect(builder.$reconnectPolicy, null);
+  });
 }
-
-class MockLogger extends Mock implements Logger {}
 
 class CaptureLogger implements Logger {
   List<String> messages;
@@ -413,14 +403,14 @@ class TestProtocol implements HubProtocol {
   }
 }
 
-HubConnectionBuilder createConnectionBuilder([Logger logger]) {
+HubConnectionBuilder createConnectionBuilder([Logger? logger]) {
   // We don't want to spam test output with logs. This can be changed as needed
-  return HubConnectionBuilder().configureLogging(logger ?? NullLogger());
+  return HubConnectionBuilder()..logger = logger ?? NullLogger();
 }
 
 TestHttpClient createTestClient(
     Completer<HttpRequest> pollSent, Future<HttpResponse> pollCompleted,
-    [Object negotiateResponse]) {
+    [Object? negotiateResponse]) {
   var firstRequest = true;
   return TestHttpClient()
       .on(

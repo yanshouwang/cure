@@ -1,3 +1,10 @@
+## 0.1.0-nullsafety.0 - 2021/01/19
+
+- Add support for null safety
+- Add MimeType
+- Remove useless export
+- Update HubConnectionBuilder API
+
 ## 0.0.5 - 2021/01/11
 
 - Add Console with different colors
